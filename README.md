@@ -21,7 +21,7 @@ dumbconf files are invariantly UTF-8 encoded.
 - Inline comments must have a whitespace character before and after the `#`
 - (Suggested) It is suggested to put two space characters before the `#` as in
   PEP8
-```
+```yaml
 # A comment
 true  # an inline comment
 ```
@@ -32,7 +32,7 @@ true  # an inline comment
 - Both single and quoted strings are appropriate
 - Escape sequences in quoted strings will be interpreted according to python
   rules.
-```
+```yaml
 'foo'
 "foo"
 'foo\'bar'
@@ -41,13 +41,13 @@ true  # an inline comment
 
 ### Bare words
 - Unambiguous (???) bare words are interpreted as strings
-```
+```yaml
 unambiguous key: unambiguous value
 ```
 
 ### Boolean
 - There are 6 tokens interpreted as booleans
-```
+```yaml
 TRUE
 FALSE
 True
@@ -67,7 +67,7 @@ false
 
 ### Inline bracketed list
 
-```
+```yaml
 []
 [ATOM]
 [ATOM, ATOM, ATOM]
@@ -77,7 +77,7 @@ false
 
 - Trailing commas are *required*
 
-```
+```yaml
 [
     ATOM,
     ATOM,
@@ -88,7 +88,7 @@ false
 
 - Closing bracket matches starting indentation
 - For instance in a mapping type:
-```
+```yaml
 ATOM: [
     ATOM,
     ATOM,
@@ -100,7 +100,7 @@ ATOM: [
 
 ### Inline bracketed map
 
-```
+```yaml
 {}
 {ATOM: ATOM}
 {ATOM: ATOM, ATOM: ATOM}
@@ -110,7 +110,7 @@ ATOM: [
 
 - Trailing commas are *required*
 
-```
+```yaml
 {
     ATOM: ATOM,
     ATOM: ATOM,
@@ -120,7 +120,7 @@ ATOM: [
 
 - Closing bracket matches starting indentation
 - For instance in a mapping type:
-```
+```yaml
 ATOM: {
     ATOM: ATOM,
     ATOM: ATOM,
@@ -130,14 +130,14 @@ ATOM: {
 
 ## Indented maps
 - Indented maps start on their own line
-```
+```yaml
 ATOM: ATOM
 ATOM: ATOM
 ATOM: ATOM
 ```
 
 - Indented maps start with an increase of indentation (four spaces).
-```
+```yaml
 ATOM:
     ATOM: ATOM
     ATOM: ATOM
@@ -149,14 +149,14 @@ ATOM:
 - Indented lists use the `-` character to denote elements.
 - Elements must start with a `-` character followed by three spaces (to make
   a four-space indent)
-```
+```yaml
 -   ELEMENT
 -   ELEMENT
 -   ELEMENT
 ```
 
 - A list is terminated by decrease in indentation
-```
+```yaml
 ATOM:
 -   ELEMENT
 -   ELEMENT
@@ -173,7 +173,7 @@ ATOM:
 
 ## Complete syntax example:
 
-```
+```yaml
 # A comment followed by a blank line
 scalars:
     true_values: [true, True, TRUE],  # An inline comment

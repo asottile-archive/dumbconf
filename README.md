@@ -130,6 +130,8 @@ ATOM: {
 
 ## Indented maps
 - Indented maps start on their own line
+- Indented maps are only legal at the top level or as values of other indented
+  maps
 ```yaml
 ATOM: ATOM
 ATOM: ATOM
@@ -146,6 +148,7 @@ ATOM:
 
 ## Indented lists
 - Indented lists start on their own line
+- Indented lists are only legal at the top level or as values of indented maps
 - Indented lists use the `-` character to denote elements.
 - Elements must start with a `-` character followed by three spaces (to make
   a four-space indent)
@@ -158,15 +161,15 @@ ATOM:
 - A list is terminated by decrease in indentation
 ```yaml
 ATOM:
--   ELEMENT
--   ELEMENT
--   ELEMENT
+    -   ELEMENT
+    -   ELEMENT
+    -   ELEMENT
 ATOM: ATOM
 ATOM:
     ATOM:
-    -   ELEMENT
-    -   ELEMENT
-    -   ELEMENT
+        -   ELEMENT
+        -   ELEMENT
+        -   ELEMENT
     ATOM: ATOM
 ```
 
@@ -197,18 +200,10 @@ a python style list: ['i', 'am', 'a', 'list']
 a bare words map: {key: value, other key: other value}
 a bare words list: [i, am, a, list]
 
-# This is kinda hard to read, ideally avoid this
-an indented list:
-    -   -   a
-        -   list
-    -   -   of
-        -   indented
-    -   -   lists
-
 # A slightly more readable alternative
-another indented list:
-    -   [a, list]
-    -   [of, indented]
+an indented list:
+    -   [an indented]
+    -   [list, of]
     -   [lists]
 
 a:
@@ -216,7 +211,7 @@ a:
         nested:
             mapping: structure
     with:
-    -   an
-    -   indented
-    -   list
+        -   an
+        -   indented
+        -   list
 ```

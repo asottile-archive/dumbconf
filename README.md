@@ -60,7 +60,13 @@ false
 - Not planned for v1
 
 ### null
-- Not planned for v1
+- There are 4 tokens interpreted as null
+```yaml
+NULL
+null
+None
+nil
+```
 
 
 ## Bracketed lists
@@ -182,8 +188,8 @@ scalars:
     true_values: [true, True, TRUE],  # An inline comment
     false_values: [false, False FALSE],
     quoted_strings:
-    -    'hello'
-    -    "ohai"
+    -   'hello'
+    -   "ohai"
     bare_strings: [
         here are,
         some,

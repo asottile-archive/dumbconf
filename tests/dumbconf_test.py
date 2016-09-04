@@ -116,10 +116,98 @@ def test_parse_quoted_string(quote, s, expected_val):
     assert parse(s) == expected
 
 
+def test_parse_indented_list():
+    ret = parse(
+        '-   True\n'
+        '-   False\n'
+    )
+    expected = ast.Doc(
+        head=(),
+        body=ast.YamlList(items=(
+            ast.YamlListItem(
+                head=(ast.YamlListItemHead('-   '),),
+                val=ast.Bool(True, 'True'),
+                tail=(ast.WS('\n'),),
+            ),
+            ast.YamlListItem(
+                head=(ast.YamlListItemHead('-   '),),
+                val=ast.Bool(False, 'False'),
+                tail=(ast.WS('\n'),),
+            ),
+        )),
+        tail=(),
+    )
+    assert ret == expected
+
+
+def test_parse_indented_list_with_inline_comment():
+    ret = parse('-   "hi"  # hello\n')
+    expected = ast.Doc(
+        head=(),
+        body=ast.YamlList(items=(
+            ast.YamlListItem(
+                head=(ast.YamlListItemHead('-   '),),
+                val=ast.String('hi', '"hi"'),
+                tail=(ast.WS('  '), ast.Comment('# hello\n')),
+            ),
+        )),
+        tail=(),
+    )
+    assert ret == expected
+
+
+def test_parse_indented_list_no_nl_at_eof():
+    ret = parse('-   "hi"')
+    expected = ast.Doc(
+        head=(),
+        body=ast.YamlList(items=(
+            ast.YamlListItem(
+                head=(ast.YamlListItemHead('-   '),),
+                val=ast.String('hi', '"hi"'),
+                tail=(),
+            ),
+        )),
+        tail=(),
+    )
+    assert ret == expected
+
+
+def test_parse_indented_list_internal_comments():
+    ret = parse(
+        '-   "hi"\n'
+        '\n'
+        '# but actually\n'
+        '-   "ohai"\n'
+    )
+    expected = ast.Doc(
+        head=(),
+        body=ast.YamlList(items=(
+            ast.YamlListItem(
+                head=(ast.YamlListItemHead('-   '),),
+                val=ast.String('hi', '"hi"'),
+                tail=(ast.WS('\n'),),
+            ),
+            ast.YamlListItem(
+                head=(
+                    ast.WS('\n'),
+                    ast.Comment('# but actually\n'),
+                    ast.YamlListItemHead('-   '),
+                ),
+                val=ast.String('ohai', '"ohai"'),
+                tail=(ast.WS('\n'),),
+            ),
+        )),
+        tail=(),
+    )
+    assert ret == expected
+
+
 def test_file_starting_in_ws():
     ret = parse('\n\nTrue')
     expected = ast.Doc(
-        head=(ast.WS('\n\n'),), body=ast.Bool(val=True, src='True'), tail=(),
+        head=(ast.WS('\n'), ast.WS('\n')),
+        body=ast.Bool(val=True, src='True'),
+        tail=(),
     )
     assert ret == expected
 

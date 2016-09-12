@@ -15,6 +15,10 @@ def parse(s):
     return ret
 
 
+def test_parse_error_no_source():
+    assert str(ParseError('', 0, 'No source!')) == 'No source!'
+
+
 def test_parse_error_trivial():
     assert str(ParseError('src', 0)) == (
         '\n\n'
@@ -152,12 +156,12 @@ def test_parse_indented_list():
             ast.YamlListItem(
                 head=(ast.YamlListItemHead('-   '),),
                 val=ast.Bool(True, 'True'),
-                tail=(ast.WS('\n'),),
+                tail=(ast.NL('\n'),),
             ),
             ast.YamlListItem(
                 head=(ast.YamlListItemHead('-   '),),
                 val=ast.Bool(False, 'False'),
-                tail=(ast.WS('\n'),),
+                tail=(ast.NL('\n'),),
             ),
         )),
         tail=(),
@@ -173,7 +177,9 @@ def test_parse_indented_list_with_inline_comment():
             ast.YamlListItem(
                 head=(ast.YamlListItemHead('-   '),),
                 val=ast.String('hi', '"hi"'),
-                tail=(ast.WS('  '), ast.Comment('# hello\n')),
+                tail=(
+                    ast.Space(' '), ast.Space(' '), ast.Comment('# hello\n'),
+                ),
             ),
         )),
         tail=(),
@@ -210,16 +216,16 @@ def test_parse_indented_list_internal_comments():
             ast.YamlListItem(
                 head=(ast.YamlListItemHead('-   '),),
                 val=ast.String('hi', '"hi"'),
-                tail=(ast.WS('\n'),),
+                tail=(ast.NL('\n'),),
             ),
             ast.YamlListItem(
                 head=(
-                    ast.WS('\n'),
+                    ast.NL('\n'),
                     ast.Comment('# but actually\n'),
                     ast.YamlListItemHead('-   '),
                 ),
                 val=ast.String('ohai', '"ohai"'),
-                tail=(ast.WS('\n'),),
+                tail=(ast.NL('\n'),),
             ),
         )),
         tail=(),
@@ -269,7 +275,7 @@ def test_json_list_several_values_inline():
                 ast.JsonListItem(
                     head=(),
                     val=ast.Bool(val=True, src='True'),
-                    tail=(ast.Comma(','), ast.WS(' ')),
+                    tail=(ast.Comma(','), ast.Space(' ')),
                 ),
                 ast.JsonListItem(
                     head=(),
@@ -284,10 +290,125 @@ def test_json_list_several_values_inline():
     assert ret == expected
 
 
+def test_json_list_multiline_trivial():
+    ret = parse('[\n]')
+    expected = ast.Doc(
+        head=(),
+        body=ast.JsonList(
+            head=(ast.JsonListStart('['), ast.NL('\n')),
+            items=(),
+            tail=(ast.JsonListEnd(']'),),
+        ),
+        tail=(),
+    )
+    assert ret == expected
+
+
+def test_json_list_multiline_comments():
+    ret = parse(
+        '[\n'
+        '    # Comment\n'
+        ']'
+    )
+    expected = ast.Doc(
+        head=(),
+        body=ast.JsonList(
+            head=(
+                ast.JsonListStart('['), ast.NL('\n'),
+                ast.Indent('    '), ast.Comment('# Comment\n'),
+            ),
+            items=(),
+            tail=(ast.JsonListEnd(']'),),
+        ),
+        tail=(),
+    )
+    assert ret == expected
+
+
+def test_json_list_multiline():
+    ret = parse(
+        '[\n'
+        '    True,\n'
+        ']'
+    )
+    expected = ast.Doc(
+        head=(),
+        body=ast.JsonList(
+            head=(ast.JsonListStart('['), ast.NL('\n')),
+            items=(
+                ast.JsonListItem(
+                    head=(ast.Indent('    '),),
+                    val=ast.Bool(val=True, src='True'),
+                    tail=(ast.Comma(','), ast.NL('\n')),
+                ),
+            ),
+            tail=(ast.JsonListEnd(']'),),
+        ),
+        tail=(),
+    )
+    assert ret == expected
+
+
+def test_json_list_multiline_comment_before():
+    ret = parse(
+        '[\n'
+        '    # Hello\n'
+        '    True,\n'
+        ']'
+    )
+    expected = ast.Doc(
+        head=(),
+        body=ast.JsonList(
+            head=(ast.JsonListStart('['), ast.NL('\n')),
+            items=(
+                ast.JsonListItem(
+                    head=(
+                        ast.Indent('    '), ast.Comment('# Hello\n'),
+                        ast.Indent('    '),
+                    ),
+                    val=ast.Bool(val=True, src='True'),
+                    tail=(ast.Comma(','), ast.NL('\n')),
+                ),
+            ),
+            tail=(ast.JsonListEnd(']'),),
+        ),
+        tail=(),
+    )
+    assert ret == expected
+
+
+def test_json_list_multiline_comment_after():
+    ret = parse(
+        '[\n'
+        '    True,\n'
+        '    # Comment\n'
+        ']'
+    )
+    expected = ast.Doc(
+        head=(),
+        body=ast.JsonList(
+            head=(ast.JsonListStart('['), ast.NL('\n')),
+            items=(
+                ast.JsonListItem(
+                    head=(ast.NL('    '),),
+                    val=ast.Bool(val=True, src='True'),
+                    tail=(
+                        ast.Comma(','), ast.NL('\n'),
+                        ast.Indent('    '), ast.Comment('# Comment\n'),
+                    ),
+                ),
+            ),
+            tail=(ast.JsonListEnd(']'),),
+        ),
+        tail=(),
+    )
+    assert ret == expected
+
+
 def test_file_starting_in_ws():
     ret = parse('\n\nTrue')
     expected = ast.Doc(
-        head=(ast.WS('\n'), ast.WS('\n')),
+        head=(ast.NL('\n'), ast.NL('\n')),
         body=ast.Bool(val=True, src='True'),
         tail=(),
     )
@@ -297,7 +418,7 @@ def test_file_starting_in_ws():
 def test_file_ending_in_ws():
     ret = parse('True\n')
     expected = ast.Doc(
-        head=(), body=ast.Bool(val=True, src='True'), tail=(ast.WS('\n'),),
+        head=(), body=ast.Bool(val=True, src='True'), tail=(ast.NL('\n'),),
     )
     assert ret == expected
 
@@ -317,7 +438,7 @@ def test_file_ending_in_comment():
     expected = ast.Doc(
         head=(),
         body=ast.Bool(val=True, src='True'),
-        tail=(ast.WS(' '), ast.Comment('# ohai\n')),
+        tail=(ast.Space(' '), ast.Comment('# ohai\n')),
     )
     assert ret == expected
 
@@ -327,7 +448,7 @@ def test_file_ending_in_comment_no_nl():
     expected = ast.Doc(
         head=(),
         body=ast.Bool(val=True, src='True'),
-        tail=(ast.WS(' '), ast.Comment('# ohai')),
+        tail=(ast.Space(' '), ast.Comment('# ohai')),
     )
     assert ret == expected
 
@@ -338,7 +459,7 @@ def test_file_ending_in_several_comments():
         head=(),
         body=ast.Bool(val=True, src='True'),
         tail=(
-            ast.WS('\n'), ast.Comment('# hello\n'), ast.Comment('# there\n'),
+            ast.NL('\n'), ast.Comment('# hello\n'), ast.Comment('# there\n'),
         ),
     )
     assert ret == expected

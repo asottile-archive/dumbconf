@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 
 import ast as python_ast
 import collections
+import contextlib
 import re
 
 
@@ -61,11 +62,17 @@ class ast:
     YamlListItem = ast_cls('YamlListItem', ('head', 'val', 'tail'))
     YamlListItemHead = ast_cls('YamlListItemHead', ('src',))
 
+    JsonList = ast_cls('JsonList', ('head', 'items', 'tail'))
+    JsonListStart = ast_cls('JsonListStart', ('src',))
+    JsonListEnd = ast_cls('JsonListEnd', ('src',))
+    JsonListItem = ast_cls('JsonListItem', ('head', 'val', 'tail'))
+
     Bool = ast_cls('Bool', ('val', 'src'))
     Null = ast_cls('Null', ('src',))
     String = ast_cls('String', ('val', 'src'))
 
     Comment = ast_cls('Comment', ('src',))
+    Comma = ast_cls('Comma', ('src',))
     WS = ast_cls('WS', ('src',))
 
 
@@ -77,30 +84,43 @@ def _reg_or(*args):
     return _or(*(reg.pattern for reg in args))
 
 
+COMMA_RE = re.compile(',')
 COMMENT_RE = re.compile('# .*(\n|$)')
 NL_RE = re.compile('\n')
+SPACE_RE = re.compile(' ')
 SPACES_RE = re.compile(' +')
 WS_RE = re.compile(r'\s+')
 
 BOOL_RE = re.compile(_or('TRUE', 'True', 'true', 'FALSE', 'False', 'false'))
 NULL_RE = re.compile(_or('NULL', 'null', 'None', 'nil'))
+STRING_STARTS_RE = re.compile('["\']')
 STRING_RE = re.compile(_or(
     r"'[^\n'\\]*(?:\\.[^\n'\\]*)*'", r'"[^\n"\\]*(?:\\.[^\n"\\]*)*"',
 ))
-LIST_ITEM_RE = re.compile('-   ')
 
+
+COMMENT_OR_NL_RE = re.compile(_reg_or(COMMENT_RE, NL_RE))
+
+LIST_START_RE = re.compile(r'\[')
+LIST_END_RE = re.compile(']')
+
+LIST_ITEM_RE = re.compile('-   ')
 LIST_CONTINUES_RE = re.compile(
-    _reg_or(COMMENT_RE, NL_RE) + '*' + LIST_ITEM_RE.pattern,
+    COMMENT_OR_NL_RE.pattern + '*' + LIST_ITEM_RE.pattern,
 )
 
 
 def _reg_parse(reg, cls, src, offset):
     match = reg.match(src, offset)
+    if match is None:
+        raise ParseError(src, offset, 'Expected {}'.format(cls.__name__))
     return cls(match.group()), match.end()
 
 
 def _reg_parse_val(reg, cls, to_val_func, src, offset):
     match = reg.match(src, offset)
+    if match is None:
+        raise ParseError(src, offset, 'Expected {}'.format(cls.__name__))
     val = to_val_func(match.group())
     return cls(val, match.group()), match.end()
 
@@ -153,6 +173,48 @@ def _parse_indented_list(src, offset):
     return ast.YamlList(items=tuple(items)), offset
 
 
+def _parse_json_list_head(src, offset):
+    ret = []
+    part, offset = _reg_parse(LIST_START_RE, ast.JsonListStart, src, offset)
+    ret.append(part)
+    multiline = bool(COMMENT_OR_NL_RE.match(src, offset))
+    if multiline:
+        tail, offset = _parse_rest_of_line_comment_or_nl(src, offset)
+        ret.extend(tail)
+    return tuple(ret), offset, multiline
+
+
+def _parse_json_list_items(src, offset):
+    items = []
+    while True:
+        if LIST_END_RE.match(src, offset):
+            break
+        val, offset = _parse_val(src, offset)
+        if COMMA_RE.match(src, offset):
+            comma, offset = _reg_parse(COMMA_RE, ast.Comma, src, offset)
+            space, offset = _reg_parse(SPACE_RE, ast.WS, src, offset)
+            tail = (comma, space)
+        else:
+            tail = ()
+        items.append(ast.JsonListItem(head=(), val=val, tail=tail))
+    return tuple(items), offset
+
+
+def _parse_json_list_items_multiline(src, offset):
+    return (), offset
+
+
+def _parse_json_list(src, offset):
+    head, offset, multiline = _parse_json_list_head(src, offset)
+    if multiline:
+        items_func = _parse_json_list_items_multiline
+    else:
+        items_func = _parse_json_list_items
+    items, offset = items_func(src, offset)
+    tail, offset = _reg_parse(LIST_END_RE, ast.JsonListEnd, src, offset)
+    return ast.JsonList(head, items, (tail,)), offset
+
+
 def _parse_head(src, offset):
     ret = []
     while True:
@@ -167,14 +229,16 @@ def _parse_head(src, offset):
 
 
 def _parse_val(src, offset):
-    if src[offset] in ('"', "'"):
+    if STRING_STARTS_RE.match(src, offset):
         return _reg_parse_val(STRING_RE, ast.String, _to_s, src, offset)
+    elif LIST_START_RE.match(src, offset):
+        return _parse_json_list(src, offset)
     elif BOOL_RE.match(src, offset):
         return _reg_parse_val(BOOL_RE, ast.Bool, _to_bool, src, offset)
     elif NULL_RE.match(src, offset):
         return _reg_parse(NULL_RE, ast.Null, src, offset)
     else:
-        raise ParseError(src, offset, msg='Unknown top level contruct')
+        raise ParseError(src, offset, msg='Expected value')
 
 
 def _parse_body(src, offset):
@@ -221,3 +285,42 @@ def unparse(ast_obj):
         elif isinstance(attr, tuple):
             src += unparse(attr)
     return src
+
+
+def debug(ast_obj, _indent=0):
+    if 'src' in ast_obj._fields:
+        return repr(ast_obj)
+    else:
+        class state:
+            indent = _indent
+
+        @contextlib.contextmanager
+        def indented():
+            state.indent += 1
+            yield
+            state.indent -= 1
+
+        def indentstr():
+            return state.indent * '    '
+
+        out = type(ast_obj).__name__ + '(\n'
+        with indented():
+            for field in ast_obj._fields:
+                attr = getattr(ast_obj, field)
+                if attr == ():
+                    representation = repr(attr)
+                elif type(attr) is tuple:
+                    representation = '(\n'
+                    with indented():
+                        for el in attr:
+                            representation += '{}{},\n'.format(
+                                indentstr(), debug(el, state.indent),
+                            )
+                    representation += indentstr() + ')'
+                elif isinstance(attr, tuple):
+                    representation = debug(attr, state.indent)
+                else:
+                    assert False
+                out += '{}{}={},\n'.format(indentstr(), field, representation)
+        out += indentstr() + ')'
+        return out

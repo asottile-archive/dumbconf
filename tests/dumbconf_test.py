@@ -78,6 +78,31 @@ def test_parse_error_many_lines():
     )
 
 
+def test_debug():
+    ret = dumbconf.debug(dumbconf.parse('[True]'))
+    assert ret == (
+        'Doc(\n'
+        '    head=(),\n'
+        '    body=JsonList(\n'
+        '        head=(\n'
+        "            JsonListStart(src='['),\n"
+        '        ),\n'
+        '        items=(\n'
+        '            JsonListItem(\n'
+        '                head=(),\n'
+        "                val=Bool(val=True, src='True'),\n"
+        '                tail=(),\n'
+        '            ),\n'
+        '        ),\n'
+        '        tail=(\n'
+        "            JsonListEnd(src=']'),\n"
+        '        ),\n'
+        '    ),\n'
+        '    tail=(),\n'
+        ')'
+    )
+
+
 @pytest.mark.parametrize(
     ('s', 'expected_val'),
     (
@@ -197,6 +222,63 @@ def test_parse_indented_list_internal_comments():
                 tail=(ast.WS('\n'),),
             ),
         )),
+        tail=(),
+    )
+    assert ret == expected
+
+
+def test_json_trivial_list():
+    ret = parse('[]')
+    expected = ast.Doc(
+        head=(),
+        body=ast.JsonList(
+            head=(ast.JsonListStart('['),),
+            items=(),
+            tail=(ast.JsonListEnd(']'),),
+        ),
+        tail=(),
+    )
+    assert ret == expected
+
+
+def test_json_list_one_value_inline():
+    ret = parse('[True]')
+    expected = ast.Doc(
+        head=(),
+        body=ast.JsonList(
+            head=(ast.JsonListStart('['),),
+            items=(
+                ast.JsonListItem(
+                    head=(), val=ast.Bool(val=True, src='True'), tail=(),
+                ),
+            ),
+            tail=(ast.JsonListEnd(']'),),
+        ),
+        tail=(),
+    )
+    assert ret == expected
+
+
+def test_json_list_several_values_inline():
+    ret = parse('[True, False]')
+    expected = ast.Doc(
+        head=(),
+        body=ast.JsonList(
+            head=(ast.JsonListStart('['),),
+            items=(
+                ast.JsonListItem(
+                    head=(),
+                    val=ast.Bool(val=True, src='True'),
+                    tail=(ast.Comma(','), ast.WS(' ')),
+                ),
+                ast.JsonListItem(
+                    head=(),
+                    val=ast.Bool(val=False, src='False'),
+                    tail=(),
+                ),
+            ),
+            tail=(ast.JsonListEnd(']'),),
+        ),
         tail=(),
     )
     assert ret == expected

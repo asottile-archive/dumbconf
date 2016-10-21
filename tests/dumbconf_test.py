@@ -405,6 +405,101 @@ def test_json_list_multiline_comment_after():
     assert ret == expected
 
 
+def test_json_list_multiple_items_multiline():
+    ret = parse(
+        '[\n'
+        '    True,\n'
+        '    False,\n'
+        ']'
+    )
+    expected = ast.Doc(
+        head=(),
+        body=ast.JsonList(
+            head=(ast.JsonListStart('['), ast.NL('\n')),
+            items=(
+                ast.JsonListItem(
+                    head=(ast.NL('    '),),
+                    val=ast.Bool(val=True, src='True'),
+                    tail=(ast.Comma(','), ast.NL('\n')),
+                ),
+                ast.JsonListItem(
+                    head=(ast.NL('    '),),
+                    val=ast.Bool(val=False, src='False'),
+                    tail=(ast.Comma(','), ast.NL('\n')),
+                ),
+            ),
+            tail=(ast.JsonListEnd(']'),),
+        ),
+        tail=(),
+    )
+    assert ret == expected
+
+
+def test_json_map_trivial():
+    ret = parse('{}')
+    expected = ast.Doc(
+        head=(),
+        body=ast.JsonMap(
+            head=(ast.JsonMapStart('{'),),
+            items=(),
+            tail=(ast.JsonMapEnd('}'),),
+        ),
+        tail=(),
+    )
+    assert ret == expected
+
+
+def test_json_map_one_element_inline():
+    ret = parse('{True: False}')
+    expected = ast.Doc(
+        head=(),
+        body=ast.JsonMap(
+            head=(ast.JsonMapStart('{'),),
+            items=(
+                ast.JsonMapItem(
+                    head=(),
+                    key=ast.Bool(val=True, src='True'),
+                    inner=(ast.Colon(':'), ast.Space(' ')),
+                    val=ast.Bool(val=False, src='False'),
+                    tail=(),
+                ),
+            ),
+            tail=(ast.JsonMapEnd('}'),),
+        ),
+        tail=(),
+    )
+    assert ret == expected
+
+
+def test_json_map_multiple_elements_inline():
+    ret = parse('{True: False, False: True}')
+    expected = ast.Doc(
+        head=(),
+        body=ast.JsonMap(
+            head=(ast.JsonMapStart('{'),),
+            items=(
+                ast.JsonMapItem(
+                    head=(),
+                    key=ast.Bool(val=True, src='True'),
+                    inner=(ast.Colon(':'), ast.Space(' ')),
+                    val=ast.Bool(val=False, src='False'),
+                    tail=(ast.Comma(','), ast.Space(' ')),
+                ),
+                ast.JsonMapItem(
+                    head=(),
+                    key=ast.Bool(val=False, src='False'),
+                    inner=(ast.Colon(':'), ast.Space(' ')),
+                    val=ast.Bool(val=True, src='True'),
+                    tail=(),
+                ),
+            ),
+            tail=(ast.JsonMapEnd('}'),),
+        ),
+        tail=(),
+    )
+    assert ret == expected
+
+
 def test_file_starting_in_ws():
     ret = parse('\n\nTrue')
     expected = ast.Doc(

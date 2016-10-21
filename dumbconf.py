@@ -90,26 +90,35 @@ class ast:
     JsonListEnd = ast_cls('JsonListEnd', ('src',))
     JsonListItem = ast_cls('JsonListItem', ('head', 'val', 'tail'))
 
+    JsonMap = ast_cls('JsonMap', ('head', 'items', 'tail'))
+    JsonMapStart = ast_cls('JsonMapStart', ('src',))
+    JsonMapEnd = ast_cls('JsonMapEnd', ('src',))
+    JsonMapItem = ast_cls(
+        'JsonMapItem', ('head', 'key', 'inner', 'val', 'tail'),
+    )
+
     Bool = ast_cls('Bool', ('val', 'src'))
     Null = ast_cls('Null', ('src',))
     String = ast_cls('String', ('val', 'src'))
 
-    Comment = ast_cls('Comment', ('src',))
+    Colon = ast_cls('Colon', ('src',))
     Comma = ast_cls('Comma', ('src',))
+    Comment = ast_cls('Comment', ('src',))
     Indent = ast_cls('Indent', ('src',))
-    Space = ast_cls('Space', ('src',))
     NL = ast_cls('NL', ('src',))
+    Space = ast_cls('Space', ('src',))
 
 
 def _or(*args):
     return '({})'.format('|'.join(args))
 
 
+COLON_RE = re.compile(':')
 COMMA_RE = re.compile(',')
 COMMENT_RE = re.compile('# .*(\n|$)')
 INDENT_RE = re.compile('(?<=\n)(    )+')
-SPACE_RE = re.compile('(?<!\n) ')
 NL_RE = re.compile('\n')
+SPACE_RE = re.compile('(?<!\n) ')
 
 BOOL_RE = re.compile(_or('TRUE', 'True', 'true', 'FALSE', 'False', 'false'))
 NULL_RE = re.compile(_or('NULL', 'null', 'None', 'nil'))
@@ -122,6 +131,9 @@ LIST_START_RE = re.compile(r'\[')
 LIST_END_RE = re.compile(']')
 
 LIST_ITEM_RE = re.compile('-   ')
+
+MAP_START_RE = re.compile('{')
+MAP_END_RE = re.compile('}')
 
 
 def _reg_parse(reg, cls, src, offset):
@@ -155,11 +167,14 @@ tokenize_processors = (
     (LIST_START_RE, _reg_parse, ast.JsonListStart),
     (LIST_END_RE, _reg_parse, ast.JsonListEnd),
     (LIST_ITEM_RE, _reg_parse, ast.YamlListItemHead),
+    (MAP_START_RE, _reg_parse, ast.JsonMapStart),
+    (MAP_END_RE, _reg_parse, ast.JsonMapEnd),
+    (COLON_RE, _reg_parse, ast.Colon),
     (COMMA_RE, _reg_parse, ast.Comma),
     (COMMENT_RE, _reg_parse, ast.Comment),
     (INDENT_RE, _reg_parse, ast.Indent),
-    (SPACE_RE, _reg_parse, ast.Space),
     (NL_RE, _reg_parse, ast.NL),
+    (SPACE_RE, _reg_parse, ast.Space),
 )
 
 
@@ -180,7 +195,9 @@ def tokenize(src, offset=0):
 
 
 def _get_token(tokens, offset, types):
-    if not isinstance(tokens[offset], types):
+    if offset == len(tokens):
+        _unexpected_eof(tokens, offset)
+    elif not isinstance(tokens[offset], types):
         _token_expected(tokens, offset, types)
     else:
         return tokens[offset], offset + 1
@@ -190,25 +207,26 @@ def _parse_rest_of_line_comment_or_nl(tokens, offset):
     ret = []
     while offset < len(tokens):
         if isinstance(tokens[offset], ast.Space):
-            ret.append(tokens[offset])
-            offset += 1
+            token, offset = _get_token(tokens, offset, ast.Space)
+            ret.append(token)
         elif isinstance(tokens[offset], (ast.Comment, ast.NL)):
-            ret.append(tokens[offset])
-            offset += 1
+            token, offset = _get_token(tokens, offset, (ast.Comment, ast.NL))
+            ret.append(token)
             break
         else:
             _token_expected(tokens, offset, (ast.Space, ast.Comment, ast.NL))
     return tuple(ret), offset
 
 
+HEAD_TYPES = (ast.Indent, ast.NL, ast.Comment)
+
+
 def _parse_head(tokens, offset):
     ret = []
     while offset < len(tokens):
-        if isinstance(
-                tokens[offset], (ast.Space, ast.Indent, ast.NL, ast.Comment),
-        ):
-            ret.append(tokens[offset])
-            offset += 1
+        if isinstance(tokens[offset], HEAD_TYPES):
+            token, offset = _get_token(tokens, offset, HEAD_TYPES)
+            ret.append(token)
         else:
             break
     return tuple(ret), offset
@@ -235,10 +253,9 @@ def _parse_indented_list(tokens, offset):
     return ast.YamlList(items=tuple(items)), offset
 
 
-def _parse_json_list_head(tokens, offset):
+def _parse_json_start(tokens, offset, ast_start):
     ret = []
-    assert isinstance(tokens[offset], ast.JsonListStart), tokens[offset]
-    part, offset = tokens[offset], offset + 1
+    part, offset = _get_token(tokens, offset, ast_start)
     ret.append(part)
     multiline = isinstance(tokens[offset], (ast.NL, ast.Comment))
     if multiline:
@@ -254,7 +271,7 @@ def _parse_json_list_items(tokens, offset):
             break
         val, offset = _parse_val(tokens, offset)
         if isinstance(tokens[offset], ast.Comma):
-            comma, offset = tokens[offset], offset + 1
+            comma, offset = _get_token(tokens, offset, ast.Comma)
             space, offset = _get_token(tokens, offset, ast.Space)
             tail = (comma, space)
         else:
@@ -278,8 +295,7 @@ def _parse_json_list_items_multiline(tokens, offset):
                 additional_head = head
             break
         val, offset = _parse_val(tokens, offset)
-        _get_token(tokens, offset, ast.Comma)
-        comma, offset = tokens[offset], offset + 1
+        comma, offset = _get_token(tokens, offset, ast.Comma)
         rest, offset = _parse_rest_of_line_comment_or_nl(tokens, offset)
         items.append(ast.JsonListItem(
             head=head,
@@ -296,23 +312,60 @@ MULTILINE_TO_JSON_LIST_ITEMS_FUNC = {
 
 
 def _parse_json_list(tokens, offset):
-    head, offset, multiline = _parse_json_list_head(tokens, offset)
+    head, offset, multiline = _parse_json_start(
+        tokens, offset, ast.JsonListStart,
+    )
     items_func = MULTILINE_TO_JSON_LIST_ITEMS_FUNC[multiline]
     items, additional_head, offset = items_func(tokens, offset)
     tail, offset = _get_token(tokens, offset, ast.JsonListEnd)
     return ast.JsonList(head + additional_head, items, (tail,)), offset
 
 
+def _parse_json_map_items(tokens, offset):
+    items = []
+    while True:
+        if isinstance(tokens[offset], ast.JsonMapEnd):
+            break
+        key, offset = _parse_val(tokens, offset)
+        colon, offset = _get_token(tokens, offset, ast.Colon)
+        space, offset = _get_token(tokens, offset, ast.Space)
+        val, offset = _parse_val(tokens, offset)
+        if isinstance(tokens[offset], ast.Comma):
+            comma, offset = _get_token(tokens, offset, ast.Comma)
+            space, offset = _get_token(tokens, offset, ast.Space)
+            tail = (comma, space)
+        else:
+            tail = ()
+        items.append(ast.JsonMapItem(
+            head=(), key=key, inner=(colon, space), val=val, tail=tail,
+        ))
+    return tuple(items), (), offset
+
+
+def _parse_json_map(tokens, offset):
+    head, offset, multiline = _parse_json_start(
+        tokens, offset, ast.JsonMapStart,
+    )
+    items, additional_head, offset = _parse_json_map_items(tokens, offset)
+    tail, offset = _get_token(tokens, offset, ast.JsonMapEnd)
+    return ast.JsonMap(head + additional_head, items, (tail,)), offset
+
+
+VALUE_TOKENS = (ast.String, ast.Bool, ast.Null)
+VALUE_START_TOKENS = VALUE_TOKENS + (ast.JsonListStart, ast.JsonMapStart)
+
+
 def _parse_val(tokens, offset):
-    VALUE_TOKENS = (ast.String, ast.Bool, ast.Null)
     if offset == len(tokens):
         _unexpected_eof(tokens, offset)
     elif isinstance(tokens[offset], VALUE_TOKENS):
         return _get_token(tokens, offset, VALUE_TOKENS)
     elif isinstance(tokens[offset], ast.JsonListStart):
         return _parse_json_list(tokens, offset)
+    elif isinstance(tokens[offset], ast.JsonMapStart):
+        return _parse_json_map(tokens, offset)
     else:
-        _token_expected(tokens, offset, VALUE_TOKENS + (ast.JsonListStart,))
+        _token_expected(tokens, offset, VALUE_START_TOKENS)
 
 
 def _parse_body(tokens, offset):

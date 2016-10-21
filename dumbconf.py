@@ -257,7 +257,10 @@ def _parse_json_start(tokens, offset, ast_start):
     ret = []
     part, offset = _get_token(tokens, offset, ast_start)
     ret.append(part)
-    multiline = isinstance(tokens[offset], (ast.NL, ast.Comment))
+    multiline = (
+        offset < len(tokens) and
+        isinstance(tokens[offset], (ast.NL, ast.Comment))
+    )
     if multiline:
         tail, offset = _parse_rest_of_line_comment_or_nl(tokens, offset)
         ret.extend(tail)
@@ -267,10 +270,12 @@ def _parse_json_start(tokens, offset, ast_start):
 def _parse_json_list_items(tokens, offset):
     items = []
     while True:
-        if isinstance(tokens[offset], ast.JsonListEnd):
+        if offset == len(tokens):
+            _unexpected_eof(tokens, offset)
+        elif isinstance(tokens[offset], ast.JsonListEnd):
             break
         val, offset = _parse_val(tokens, offset)
-        if isinstance(tokens[offset], ast.Comma):
+        if offset < len(tokens) and isinstance(tokens[offset], ast.Comma):
             comma, offset = _get_token(tokens, offset, ast.Comma)
             space, offset = _get_token(tokens, offset, ast.Space)
             tail = (comma, space)
@@ -324,13 +329,15 @@ def _parse_json_list(tokens, offset):
 def _parse_json_map_items(tokens, offset):
     items = []
     while True:
-        if isinstance(tokens[offset], ast.JsonMapEnd):
+        if offset == len(tokens):
+            _unexpected_eof(tokens, offset)
+        elif isinstance(tokens[offset], ast.JsonMapEnd):
             break
         key, offset = _parse_val(tokens, offset)
         colon, offset = _get_token(tokens, offset, ast.Colon)
         space, offset = _get_token(tokens, offset, ast.Space)
         val, offset = _parse_val(tokens, offset)
-        if isinstance(tokens[offset], ast.Comma):
+        if offset < len(tokens) and isinstance(tokens[offset], ast.Comma):
             comma, offset = _get_token(tokens, offset, ast.Comma)
             space, offset = _get_token(tokens, offset, ast.Space)
             tail = (comma, space)

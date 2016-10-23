@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 import ast as python_ast
 import collections
 import contextlib
+import functools
 import re
 
 
@@ -267,22 +268,25 @@ def _parse_json_start(tokens, offset, ast_start):
     return tuple(ret), offset, multiline
 
 
-def _parse_json_list_items(tokens, offset):
+def _parse_json_items(tokens, offset, endtoken, parse_item):
     items = []
     while True:
         if offset == len(tokens):
             _unexpected_eof(tokens, offset)
-        elif isinstance(tokens[offset], ast.JsonListEnd):
+        elif isinstance(tokens[offset], endtoken):
             break
-        val, offset = _parse_val(tokens, offset)
+        val, offset = parse_item(tokens, offset, head=())
         if offset < len(tokens) and isinstance(tokens[offset], ast.Comma):
             comma, offset = _get_token(tokens, offset, ast.Comma)
             space, offset = _get_token(tokens, offset, ast.Space)
-            tail = (comma, space)
-        else:
-            tail = ()
-        items.append(ast.JsonListItem(head=(), val=val, tail=tail))
+            val = val._replace(tail=val.tail + (comma, space))
+        items.append(val)
     return tuple(items), (), offset
+
+
+def _parse_json_list_item(tokens, offset, head):
+    val, offset = _parse_val(tokens, offset)
+    return ast.JsonListItem(head, val, ()), offset
 
 
 def _parse_json_list_items_multiline(tokens, offset):
@@ -312,7 +316,10 @@ def _parse_json_list_items_multiline(tokens, offset):
 
 MULTILINE_TO_JSON_LIST_ITEMS_FUNC = {
     True: _parse_json_list_items_multiline,
-    False: _parse_json_list_items,
+    False: functools.partial(
+        _parse_json_items,
+        endtoken=ast.JsonListEnd, parse_item=_parse_json_list_item,
+    ),
 }
 
 
@@ -326,27 +333,18 @@ def _parse_json_list(tokens, offset):
     return ast.JsonList(head + additional_head, items, (tail,)), offset
 
 
-def _parse_json_map_items(tokens, offset):
-    items = []
-    while True:
-        if offset == len(tokens):
-            _unexpected_eof(tokens, offset)
-        elif isinstance(tokens[offset], ast.JsonMapEnd):
-            break
-        key, offset = _parse_val(tokens, offset)
-        colon, offset = _get_token(tokens, offset, ast.Colon)
-        space, offset = _get_token(tokens, offset, ast.Space)
-        val, offset = _parse_val(tokens, offset)
-        if offset < len(tokens) and isinstance(tokens[offset], ast.Comma):
-            comma, offset = _get_token(tokens, offset, ast.Comma)
-            space, offset = _get_token(tokens, offset, ast.Space)
-            tail = (comma, space)
-        else:
-            tail = ()
-        items.append(ast.JsonMapItem(
-            head=(), key=key, inner=(colon, space), val=val, tail=tail,
-        ))
-    return tuple(items), (), offset
+def _parse_json_map_item(tokens, offset, head):
+    key, offset = _parse_val(tokens, offset)
+    colon, offset = _get_token(tokens, offset, ast.Colon)
+    space, offset = _get_token(tokens, offset, ast.Space)
+    val, offset = _parse_val(tokens, offset)
+    return ast.JsonMapItem(head, key, (colon, space), val, ()), offset
+
+
+_parse_json_map_items = functools.partial(
+    _parse_json_items,
+    endtoken=ast.JsonMapEnd, parse_item=_parse_json_map_item,
+)
 
 
 def _parse_json_map(tokens, offset):

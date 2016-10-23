@@ -500,6 +500,20 @@ def test_json_map_multiple_elements_inline():
     assert ret == expected
 
 
+def test_json_map_multiline_trivial():
+    ret = parse('{\n}')
+    expected = ast.Doc(
+        head=(),
+        body=ast.JsonMap(
+            head=(ast.JsonMapStart('{'), ast.NL('\n')),
+            items=(),
+            tail=(ast.JsonMapEnd('}'),),
+        ),
+        tail=(),
+    )
+    assert ret == expected
+
+
 def test_file_starting_in_ws():
     ret = parse('\n\nTrue')
     expected = ast.Doc(

@@ -514,6 +514,32 @@ def test_json_map_multiline_trivial():
     assert ret == expected
 
 
+def test_json_map_multiline_one_element():
+    ret = parse(
+        '{\n'
+        '    True: False,\n'
+        '}'
+    )
+    expected = ast.Doc(
+        head=(),
+        body=ast.JsonMap(
+            head=(ast.JsonMapStart('{'), ast.NL('\n')),
+            items=(
+                ast.JsonMapItem(
+                    head=(ast.Indent('    '),),
+                    key=ast.Bool(val=True, src='True'),
+                    inner=(ast.Colon(':'), ast.Space(' ')),
+                    val=ast.Bool(val=False, src='False'),
+                    tail=(ast.Comma(','), ast.NL('\n')),
+                ),
+            ),
+            tail=(ast.JsonMapEnd('}'),),
+        ),
+        tail=(),
+    )
+    assert ret == expected
+
+
 def test_file_starting_in_ws():
     ret = parse('\n\nTrue')
     expected = ast.Doc(

@@ -284,53 +284,46 @@ def _parse_json_items(tokens, offset, endtoken, parse_item):
     return tuple(items), (), offset
 
 
-def _parse_json_list_item(tokens, offset, head):
-    val, offset = _parse_val(tokens, offset)
-    return ast.JsonListItem(head, val, ()), offset
-
-
-def _parse_json_list_items_multiline(tokens, offset):
-    additional_head = ()
+def _parse_json_items_multiline(tokens, offset, endtoken, parse_item):
+    more_head = ()
     items = []
     while True:
         head, offset = _parse_head(tokens, offset)
         # It's possible that there's comments / newlines after the last
         # item.  In that case, we augment the tail of the previous item.
         # If there are no items, this augments the head of the list itself.
-        if isinstance(tokens[offset], ast.JsonListEnd):
+        if isinstance(tokens[offset], endtoken):
             if items:
                 items[-1] = items[-1]._replace(tail=items[-1].tail + head)
             else:
-                additional_head = head
+                more_head = head
             break
-        val, offset = _parse_val(tokens, offset)
+        val, offset = parse_item(tokens, offset, head=head)
         comma, offset = _get_token(tokens, offset, ast.Comma)
         rest, offset = _parse_rest_of_line_comment_or_nl(tokens, offset)
-        items.append(ast.JsonListItem(
-            head=head,
-            val=val,
-            tail=(comma,) + rest,
-        ))
-    return tuple(items), additional_head, offset
+        val = val._replace(tail=val.tail + (comma,) + rest)
+        items.append(val)
+    return tuple(items), more_head, offset
 
 
-MULTILINE_TO_JSON_LIST_ITEMS_FUNC = {
-    True: _parse_json_list_items_multiline,
-    False: functools.partial(
-        _parse_json_items,
-        endtoken=ast.JsonListEnd, parse_item=_parse_json_list_item,
-    ),
-}
+def _parse_json(tokens, offset, cls, starttoken, endtoken, parse_item):
+    head, offset, multiline = _parse_json_start(tokens, offset, starttoken)
+    func = _parse_json_items_multiline if multiline else _parse_json_items
+    items, more_head, offset = func(tokens, offset, endtoken, parse_item)
+    tail, offset = _get_token(tokens, offset, endtoken)
+    return cls(head + more_head, items, (tail,)), offset
 
 
-def _parse_json_list(tokens, offset):
-    head, offset, multiline = _parse_json_start(
-        tokens, offset, ast.JsonListStart,
-    )
-    items_func = MULTILINE_TO_JSON_LIST_ITEMS_FUNC[multiline]
-    items, additional_head, offset = items_func(tokens, offset)
-    tail, offset = _get_token(tokens, offset, ast.JsonListEnd)
-    return ast.JsonList(head + additional_head, items, (tail,)), offset
+def _parse_json_list_item(tokens, offset, head):
+    val, offset = _parse_val(tokens, offset)
+    return ast.JsonListItem(head, val, ()), offset
+
+
+_parse_json_list = functools.partial(
+    _parse_json,
+    cls=ast.JsonList, starttoken=ast.JsonListStart, endtoken=ast.JsonListEnd,
+    parse_item=_parse_json_list_item,
+)
 
 
 def _parse_json_map_item(tokens, offset, head):
@@ -341,19 +334,11 @@ def _parse_json_map_item(tokens, offset, head):
     return ast.JsonMapItem(head, key, (colon, space), val, ()), offset
 
 
-_parse_json_map_items = functools.partial(
-    _parse_json_items,
-    endtoken=ast.JsonMapEnd, parse_item=_parse_json_map_item,
+_parse_json_map = functools.partial(
+    _parse_json,
+    cls=ast.JsonMap, starttoken=ast.JsonMapStart, endtoken=ast.JsonMapEnd,
+    parse_item=_parse_json_map_item,
 )
-
-
-def _parse_json_map(tokens, offset):
-    head, offset, multiline = _parse_json_start(
-        tokens, offset, ast.JsonMapStart,
-    )
-    items, additional_head, offset = _parse_json_map_items(tokens, offset)
-    tail, offset = _get_token(tokens, offset, ast.JsonMapEnd)
-    return ast.JsonMap(head + additional_head, items, (tail,)), offset
 
 
 VALUE_TOKENS = (ast.String, ast.Bool, ast.Null)

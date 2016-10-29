@@ -598,3 +598,53 @@ def test_file_ending_in_several_comments():
         ),
     )
     assert ret == expected
+
+
+def _assert_parse_error(src, s):
+    with pytest.raises(dumbconf.ParseError) as excinfo:
+        parse(src)
+    assert str(excinfo.value) == s
+
+
+def test_parse_error_no_contents():
+    _assert_parse_error(
+        '',
+        'Expected one of (String, Bool, Null, JsonListStart, JsonMapStart) '
+        'but received EOF',
+    )
+
+
+def test_parse_error_unexpected_token():
+    _assert_parse_error(
+        '&',
+        'Unexpected token\n\n'
+        'Line 1, column 1\n\n'
+        'Line|Source\n'
+        '----|------------------------------------------------------\n'
+        '1   |&\n'
+        '     ^\n',
+    )
+
+
+def test_parse_error_token_expected():
+    _assert_parse_error(
+        '{True:,}',
+        'Expected one of (Space) but received Comma\n\n'
+        'Line 1, column 7\n\n'
+        'Line|Source\n'
+        '----|------------------------------------------------------\n'
+        '1   |{True:,}\n'
+        '           ^\n',
+    )
+
+
+def test_parse_error_token_while_searching_for_end_of_line():
+    _assert_parse_error(
+        '-   True False',
+        'Expected one of (Space, Comment, NL) but received Bool\n\n'
+        'Line 1, column 10\n\n'
+        'Line|Source\n'
+        '----|------------------------------------------------------\n'
+        '1   |-   True False\n'
+        '              ^\n'
+    )

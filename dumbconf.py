@@ -69,11 +69,6 @@ def _token_expected(tokens, offset, expected):
     raise ParseError(src, offset, msg)
 
 
-def _unexpected_eof(tokens, offset):
-    src, offset = _tokens_to_src_offset(tokens, offset)
-    raise ParseError(src, offset, 'Unexpected end of file')
-
-
 def ast_cls(*args, **kwargs):
     # TODO: add more useful things here
     return collections.namedtuple(*args, **kwargs)
@@ -109,6 +104,8 @@ class ast:
     NL = ast_cls('NL', ('src',))
     Space = ast_cls('Space', ('src',))
 
+    EOF = ast_cls('EOF', ('src',))
+
 
 def _or(*args):
     return '({})'.format('|'.join(args))
@@ -139,15 +136,11 @@ MAP_END_RE = re.compile('}')
 
 def _reg_parse(reg, cls, src, offset):
     match = reg.match(src, offset)
-    if match is None:
-        raise ParseError(src, offset, 'Expected {}'.format(cls.__name__))
     return cls(match.group()), match.end()
 
 
 def _reg_parse_val(reg, cls, to_val_func, src, offset):
     match = reg.match(src, offset)
-    if match is None:
-        raise ParseError(src, offset, 'Expected {}'.format(cls.__name__))
     val = to_val_func(match.group())
     return cls(val, match.group()), match.end()
 
@@ -192,13 +185,12 @@ def tokenize(src, offset=0):
                 break
         else:
             raise ParseError(src, offset, 'Unexpected token')
+    tokens.append(ast.EOF(''))
     return tuple(tokens)
 
 
 def _get_token(tokens, offset, types):
-    if offset == len(tokens):
-        _unexpected_eof(tokens, offset)
-    elif not isinstance(tokens[offset], types):
+    if not isinstance(tokens[offset], types):
         _token_expected(tokens, offset, types)
     else:
         return tokens[offset], offset + 1
@@ -206,13 +198,15 @@ def _get_token(tokens, offset, types):
 
 def _parse_rest_of_line_comment_or_nl(tokens, offset):
     ret = []
-    while offset < len(tokens):
+    while True:
         if isinstance(tokens[offset], ast.Space):
             token, offset = _get_token(tokens, offset, ast.Space)
             ret.append(token)
         elif isinstance(tokens[offset], (ast.Comment, ast.NL)):
             token, offset = _get_token(tokens, offset, (ast.Comment, ast.NL))
             ret.append(token)
+            break
+        elif isinstance(tokens[offset], ast.EOF):
             break
         else:
             _token_expected(tokens, offset, (ast.Space, ast.Comment, ast.NL))
@@ -224,7 +218,7 @@ HEAD_TYPES = (ast.Indent, ast.NL, ast.Comment)
 
 def _parse_head(tokens, offset):
     ret = []
-    while offset < len(tokens):
+    while True:
         if isinstance(tokens[offset], HEAD_TYPES):
             token, offset = _get_token(tokens, offset, HEAD_TYPES)
             ret.append(token)
@@ -241,7 +235,7 @@ def _parse_indented_list_item_head(tokens, offset):
 
 def _parse_indented_list(tokens, offset):
     items = []
-    while offset < len(tokens):
+    while True:
         if not any(
             isinstance(token, ast.YamlListItemHead)
             for token in tokens[offset:]
@@ -271,9 +265,7 @@ def _parse_json_start(tokens, offset, ast_start):
 def _parse_json_items(tokens, offset, endtoken, parse_item):
     items = []
     while True:
-        if offset == len(tokens):
-            _unexpected_eof(tokens, offset)
-        elif isinstance(tokens[offset], endtoken):
+        if isinstance(tokens[offset], endtoken):
             break
         val, offset = parse_item(tokens, offset, head=())
         if offset < len(tokens) and isinstance(tokens[offset], ast.Comma):
@@ -346,9 +338,7 @@ VALUE_START_TOKENS = VALUE_TOKENS + (ast.JsonListStart, ast.JsonMapStart)
 
 
 def _parse_val(tokens, offset):
-    if offset == len(tokens):
-        _unexpected_eof(tokens, offset)
-    elif isinstance(tokens[offset], VALUE_TOKENS):
+    if isinstance(tokens[offset], VALUE_TOKENS):
         return _get_token(tokens, offset, VALUE_TOKENS)
     elif isinstance(tokens[offset], ast.JsonListStart):
         return _parse_json_list(tokens, offset)
@@ -359,9 +349,7 @@ def _parse_val(tokens, offset):
 
 
 def _parse_body(tokens, offset):
-    if offset == len(tokens):
-        _unexpected_eof(tokens, offset)
-    elif isinstance(tokens[offset], ast.YamlListItemHead):
+    if isinstance(tokens[offset], ast.YamlListItemHead):
         return _parse_indented_list(tokens, offset)
     else:
         return _parse_val(tokens, offset)
@@ -370,7 +358,9 @@ def _parse_body(tokens, offset):
 def _parse_tail(tokens, offset):
     # The file may end in newlines whitespace and comments
     ret = []
-    while offset < len(tokens):
+    while True:
+        if isinstance(tokens[offset], ast.EOF):
+            break
         token, offset = _get_token(
             tokens, offset, (ast.NL, ast.Space, ast.Comment),
         )
@@ -380,9 +370,6 @@ def _parse_tail(tokens, offset):
 
 def parse(src):
     tokens, offset = tokenize(src), 0
-
-    if not tokens:
-        raise ParseError(src, 0, 'No source provided!')
 
     head, offset = _parse_head(tokens, offset)
     body, offset = _parse_body(tokens, offset)
@@ -438,7 +425,7 @@ def debug(ast_obj, _indent=0):
                 elif isinstance(attr, tuple):
                     representation = debug(attr, state.indent)
                 else:
-                    assert False
+                    raise AssertionError('unreachable!')
                 out += '{}{}={},\n'.format(indentstr(), field, representation)
         out += indentstr() + ')'
         return out

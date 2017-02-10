@@ -121,9 +121,13 @@ def test_debug():
             dumbconf.Pattern(dumbconf.Star(ast.Space), ast.Comment),
             (ast.Comment, ast.Space),
         ),
-        # Pattern with a Plus does not
+        # Pattern with a "Plus" does not
         (
-            dumbconf.Pattern(dumbconf.Plus(ast.Space), ast.Comment),
+            dumbconf.Pattern(
+                # Essentially Plus(ast.Space)
+                dumbconf.Pattern(ast.Space, dumbconf.Star(ast.Space)),
+                ast.Comment,
+            ),
             (ast.Space,),
         ),
         # Pattern with nested Star-only pattern continues

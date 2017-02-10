@@ -185,7 +185,7 @@ class Pattern(collections.namedtuple('Pattern', ('sequence',))):
 
     def __new__(cls, *args):
         if len(args) < 2:
-            raise TypeError('Expected a sequence of at least length 2', args)
+            raise AssertionError('Expected len(sequence) >= 2', args)
         return super(Pattern, cls).__new__(cls, args)
 
 
@@ -194,12 +194,11 @@ class Or(collections.namedtuple('Or', ('choices',))):
 
     def __new__(cls, *args):
         if len(args) < 2:
-            raise TypeError('Expected at least 2 choices', args)
+            raise AssertionError('Expected len(choices) >= 2', args)
         return super(Or, cls).__new__(cls, args)
 
 
 Star = collections.namedtuple('Star', ('pattern',))
-Plus = collections.namedtuple('Plus', ('pattern',))
 
 
 class Match(collections.namedtuple('Match', ('start', 'end', 'tokens'))):
@@ -217,12 +216,9 @@ def _matches_pattern(
 
     `cb` is called on failure and should raise or return `None`
     """
-    tokenlen = len(tokens)
     start = offset
 
-    if pattern and offset >= len(tokens):
-        return cb(tokens, offset, pattern)
-    elif isinstance(pattern, Pattern):
+    if isinstance(pattern, Pattern):
         for seq in pattern.sequence:
             ret = _matches_pattern(tokens, offset, seq)
             if ret is None:
@@ -245,9 +241,6 @@ def _matches_pattern(
             else:
                 _, offset, _ = ret
         return Match(start, offset, tokens)
-    elif isinstance(pattern, Plus):
-        new_pattern = Pattern(pattern.pattern, Star(pattern.pattern))
-        return _matches_pattern(tokens, offset, new_pattern)
     elif isinstance(tokens[offset], pattern):
         return Match(start, offset + 1, tokens)
     else:
@@ -275,8 +268,6 @@ def _pattern_expected_tokens(pattern):
             return ret, done
         elif isinstance(pattern, Star):
             return _expected_inner(pattern.pattern)[0], False
-        elif isinstance(pattern, Plus):
-            return _expected_inner(pattern.pattern)[0], True
         else:
             return {pattern}, True
 

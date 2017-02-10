@@ -138,8 +138,8 @@ def test_debug():
         ),
     ),
 )
-def test_pattern_expected(pattern, expected):
-    assert dumbconf._pattern_expected(pattern) == expected
+def test_pattern_expected_tokens(pattern, expected):
+    assert dumbconf._pattern_expected_tokens(pattern) == expected
 
 
 @pytest.mark.parametrize(

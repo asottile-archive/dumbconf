@@ -209,18 +209,24 @@ class Match(collections.namedtuple('Match', ('start', 'end', 'tokens'))):
         return self.tokens[self.start:self.end], self.end
 
 
-def _matches_pattern(tokens, offset, pattern):
-    """Basically a regex language for tokens"""
+def _matches_pattern(
+    tokens, offset, pattern,
+    cb=lambda tokens, offset, pattern: None,
+):
+    """Basically a regex language for tokens
+
+    `cb` is called on failure and should raise or return `None`
+    """
     tokenlen = len(tokens)
     start = offset
 
     if pattern and offset >= len(tokens):
-        return None
+        return cb(tokens, offset, pattern)
     elif isinstance(pattern, Pattern):
         for seq in pattern.sequence:
             ret = _matches_pattern(tokens, offset, seq)
             if ret is None:
-                return ret
+                return cb(tokens, offset, seq)
             else:
                 _, offset, _ = ret
         return Match(start, offset, tokens)
@@ -230,7 +236,7 @@ def _matches_pattern(tokens, offset, pattern):
             if ret is not None:
                 return ret
         else:
-            return None
+            return cb(tokens, offset, pattern)
     elif isinstance(pattern, Star):
         while True:
             ret = _matches_pattern(tokens, offset, pattern.pattern)
@@ -245,10 +251,10 @@ def _matches_pattern(tokens, offset, pattern):
     elif isinstance(tokens[offset], pattern):
         return Match(start, offset + 1, tokens)
     else:
-        return None
+        return cb(tokens, offset, pattern)
 
 
-def _pattern_expected(pattern):
+def _pattern_expected_tokens(pattern):
     """Iterate the pattern and find what should have been next"""
     def _expected_inner(pattern):
         if isinstance(pattern, Pattern):
@@ -278,38 +284,29 @@ def _pattern_expected(pattern):
     return tuple(sorted(possible, key=lambda cls: cls.__name__))
 
 
-def _get_pattern(tokens, offset, pattern):
-    match = _matches_pattern(tokens, offset, pattern)
-    if match:
-        return match.match()
-    else:
-        _token_expected(tokens, offset, _pattern_expected(pattern))
-
-
-def _get_token(tokens, offset, types):
-    if not isinstance(tokens[offset], types):
-        _token_expected(tokens, offset, types)
-    else:
-        return tokens[offset], offset + 1
+def _get_pattern(tokens, offset, pattern, single=False):
+    def _pattern_expected(tokens, offset, pattern):
+        _token_expected(tokens, offset, _pattern_expected_tokens(pattern))
+    match = _matches_pattern(tokens, offset, pattern, _pattern_expected)
+    val, offset = match.match()
+    if single:
+        val, = val
+    return val, offset
 
 
 PT_REST_OF_LINE = Or(ast.NL, Pattern(Star(ast.Space), ast.Comment))
 PT_HEAD = Star(Or(ast.Indent, ast.NL, ast.Comment))
-
-
-def _parse_head(tokens, offset):
-    return _get_pattern(tokens, offset, PT_HEAD)
+PT_COLON_SPACE = Pattern(ast.Colon, ast.Space)
+PT_COMMA_SPACE = Pattern(ast.Comma, ast.Space)
 
 
 def _parse_json_start(tokens, offset, ast_start):
-    ret = []
-    part, offset = _get_token(tokens, offset, ast_start)
-    ret.append(part)
+    ret, offset = _get_pattern(tokens, offset, ast_start)
     match = _matches_pattern(tokens, offset, PT_REST_OF_LINE)
     if match:
-        tail, offset = match.match()
-        ret.extend(tail)
-    return tuple(ret), offset, bool(match)
+        rest, offset = match.match()
+        ret += rest
+    return ret, offset, bool(match)
 
 
 def _parse_json_items(tokens, offset, endtoken, parse_item):
@@ -319,9 +316,8 @@ def _parse_json_items(tokens, offset, endtoken, parse_item):
             break
         val, offset = parse_item(tokens, offset, head=())
         if offset < len(tokens) and isinstance(tokens[offset], ast.Comma):
-            comma, offset = _get_token(tokens, offset, ast.Comma)
-            space, offset = _get_token(tokens, offset, ast.Space)
-            val = val._replace(tail=val.tail + (comma, space))
+            comma_space, offset = _get_pattern(tokens, offset, PT_COMMA_SPACE)
+            val = val._replace(tail=val.tail + comma_space)
         items.append(val)
     return tuple(items), (), offset
 
@@ -330,7 +326,7 @@ def _parse_json_items_multiline(tokens, offset, endtoken, parse_item):
     more_head = ()
     items = []
     while True:
-        head, offset = _parse_head(tokens, offset)
+        head, offset = _get_pattern(tokens, offset, PT_HEAD)
         # It's possible that there's comments / newlines after the last
         # item.  In that case, we augment the tail of the previous item.
         # If there are no items, this augments the head of the list itself.
@@ -341,9 +337,9 @@ def _parse_json_items_multiline(tokens, offset, endtoken, parse_item):
                 more_head = head
             break
         val, offset = parse_item(tokens, offset, head=head)
-        comma, offset = _get_token(tokens, offset, ast.Comma)
+        comma, offset = _get_pattern(tokens, offset, ast.Comma)
         rest, offset = _get_pattern(tokens, offset, PT_REST_OF_LINE)
-        val = val._replace(tail=val.tail + (comma,) + rest)
+        val = val._replace(tail=val.tail + comma + rest)
         items.append(val)
     return tuple(items), more_head, offset
 
@@ -352,8 +348,8 @@ def _parse_json(tokens, offset, cls, starttoken, endtoken, parse_item):
     head, offset, multiline = _parse_json_start(tokens, offset, starttoken)
     func = _parse_json_items_multiline if multiline else _parse_json_items
     items, more_head, offset = func(tokens, offset, endtoken, parse_item)
-    tail, offset = _get_token(tokens, offset, endtoken)
-    return cls(head + more_head, items, (tail,)), offset
+    tail, offset = _get_pattern(tokens, offset, endtoken)
+    return cls(head + more_head, items, tail), offset
 
 
 def _parse_json_list_item(tokens, offset, head):
@@ -370,10 +366,9 @@ _parse_json_list = functools.partial(
 
 def _parse_json_map_item(tokens, offset, head):
     key, offset = _parse_val(tokens, offset)
-    colon, offset = _get_token(tokens, offset, ast.Colon)
-    space, offset = _get_token(tokens, offset, ast.Space)
+    colon_space, offset = _get_pattern(tokens, offset, PT_COLON_SPACE)
     val, offset = _parse_val(tokens, offset)
-    return ast.MapItem(head, key, (colon, space), val, ()), offset
+    return ast.MapItem(head, key, colon_space, val, ()), offset
 
 
 _parse_json_map = functools.partial(
@@ -383,40 +378,34 @@ _parse_json_map = functools.partial(
 )
 
 
-VALUE_TOKENS = (ast.String, ast.Bool, ast.Null)
-VALUE_START_TOKENS = VALUE_TOKENS + (ast.ListStart, ast.MapStart)
+PT_VALUE_TOKENS = Or(ast.String, ast.Bool, ast.Null)
+VALUE_START_TOKENS = PT_VALUE_TOKENS.choices + (ast.ListStart, ast.MapStart)
 
 
 def _parse_val(tokens, offset):
-    if isinstance(tokens[offset], VALUE_TOKENS):
-        return _get_token(tokens, offset, VALUE_TOKENS)
-    elif isinstance(tokens[offset], ast.ListStart):
+    if _matches_pattern(tokens, offset, PT_VALUE_TOKENS):
+        return _get_pattern(tokens, offset, PT_VALUE_TOKENS, single=True)
+    elif _matches_pattern(tokens, offset, ast.ListStart):
         return _parse_json_list(tokens, offset)
-    elif isinstance(tokens[offset], ast.MapStart):
+    elif _matches_pattern(tokens, offset, ast.MapStart):
         return _parse_json_map(tokens, offset)
     else:
         _token_expected(tokens, offset, VALUE_START_TOKENS)
 
 
-def _parse_tail(tokens, offset):
-    # The file may end in newlines whitespace and comments
-    ret = []
-    while True:
-        if isinstance(tokens[offset], ast.EOF):
-            break
-        token, offset = _get_token(
-            tokens, offset, (ast.NL, ast.Space, ast.Comment),
-        )
-        ret.append(token)
-    return tuple(ret), offset
+def _parse_eof(tokens, offset):
+    """Parse the end of the file"""
+    ret, offset = _get_pattern(tokens, offset, Star(PT_REST_OF_LINE))
+    _get_pattern(tokens, offset, ast.EOF)
+    return ret, offset
 
 
 def parse(src):
     tokens, offset = tokenize(src), 0
 
-    head, offset = _parse_head(tokens, offset)
+    head, offset = _get_pattern(tokens, offset, PT_HEAD)
     body, offset = _parse_val(tokens, offset)
-    tail, offset = _parse_tail(tokens, offset)
+    tail, offset = _parse_eof(tokens, offset)
 
     return ast.Doc(head, body, tail)
 

@@ -39,10 +39,14 @@ true  # an inline comment
 "foo\"bar"
 ```
 
-### Bare words
-- Unambiguous (???) bare words are interpreted as strings
+### Bare word keys
+- Maps may contain bare words keys
+- Keys which would otherwise be interpreted as another value must be quoted
 ```yaml
-unambiguous key: unambiguous value
+{
+    im_a_bare_word_key: 'value',
+    'True': 'indeed, my key needed quoting',
+}
 ```
 
 ### Boolean
@@ -95,11 +99,13 @@ nil
 - Closing bracket matches starting indentation
 - For instance in a mapping type:
 ```yaml
-ATOM: [
-    ATOM,
-    ATOM,
-    ATOM,
-]
+{
+    ATOM: [
+        ATOM,
+        ATOM,
+        ATOM,
+    ]
+}
 ```
 
 ## Bracketed maps
@@ -127,97 +133,33 @@ ATOM: [
 - Closing bracket matches starting indentation
 - For instance in a mapping type:
 ```yaml
-ATOM: {
-    ATOM: ATOM,
-    ATOM: ATOM,
-    ATOM: ATOM,
+{
+    ATOM: {
+        ATOM: ATOM,
+        ATOM: ATOM,
+        ATOM: ATOM,
+    }
 }
 ```
-
-## Indented maps
-- Indented maps start on their own line
-- Indented maps are only legal at the top level or as values of other indented
-  maps
-```yaml
-ATOM: ATOM
-ATOM: ATOM
-ATOM: ATOM
-```
-
-- Indented maps start with an increase of indentation (four spaces).
-```yaml
-ATOM:
-    ATOM: ATOM
-    ATOM: ATOM
-    ATOM: ATOM
-```
-
-## Indented lists
-- Indented lists start on their own line
-- Indented lists are only legal at the top level or as values of indented maps
-- Indented lists use the `-` character to denote elements.
-- Elements must start with a `-` character followed by three spaces (to make
-  a four-space indent)
-```yaml
--   ELEMENT
--   ELEMENT
--   ELEMENT
-```
-
-- A list is terminated by decrease in indentation
-```yaml
-ATOM:
-    -   ELEMENT
-    -   ELEMENT
-    -   ELEMENT
-ATOM: ATOM
-ATOM:
-    ATOM:
-        -   ELEMENT
-        -   ELEMENT
-        -   ELEMENT
-    ATOM: ATOM
-```
-
 
 ## Complete syntax example:
 
 ```yaml
 # A comment followed by a blank line
-scalars:
-    true_values: [true, True, TRUE],  # An inline comment
-    false_values: [false, False FALSE],
-    quoted_strings:
-    -   'hello'
-    -   "ohai"
-    bare_strings: [
-        here are,
-        some,
-        bare,
-        strings,
-    ]
+{
+    scalars: {
+        true_values: [true, True, TRUE],  # An inline comment
+        false_values: [false, False FALSE],
+        none_values: [None, nil, NULL, null],
+        strings: ["double quoted", 'single quoted', 'unicode: \u2603'],
+    },
 
-a json style map: {"key": "value", "other key": "other value"},
-a json style list: ["i", "am", "a", "list"],
+    'a json style map': {"key": "value", "other key": "other value"},
+    'a json style list': ["i", "am", "a", "list"],
 
-a python style map: {'key': 'value', 'other key': 'other value'},
-a python style list: ['i', 'am', 'a', 'list']
+    'a python style map': {'key': 'value', 'other key': 'other value'},
+    'a python style list': ['i', 'am', 'a', 'list'],
 
-a bare words map: {key: value, other key: other value}
-a bare words list: [i, am, a, list]
-
-# A slightly more readable alternative
-an indented list:
-    -   [an indented]
-    -   [list, of]
-    -   [lists]
-
-a:
-    deeply:
-        nested:
-            mapping: structure
-    with:
-        -   an
-        -   indented
-        -   list
+    'a bare words map': {key: 'value', other_key: 'other value'},
+}
 ```

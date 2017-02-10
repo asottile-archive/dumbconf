@@ -87,24 +87,59 @@ def test_debug():
     assert ret == (
         'Doc(\n'
         '    head=(),\n'
-        '    body=JsonList(\n'
+        '    body=List(\n'
         '        head=(\n'
-        "            JsonListStart(src='['),\n"
+        "            ListStart(src='['),\n"
         '        ),\n'
         '        items=(\n'
-        '            JsonListItem(\n'
+        '            ListItem(\n'
         '                head=(),\n'
         "                val=Bool(val=True, src='True'),\n"
         '                tail=(),\n'
         '            ),\n'
         '        ),\n'
         '        tail=(\n'
-        "            JsonListEnd(src=']'),\n"
+        "            ListEnd(src=']'),\n"
         '        ),\n'
         '    ),\n'
         '    tail=(),\n'
         ')'
     )
+
+
+@pytest.mark.parametrize(
+    ('pattern', 'expected'),
+    (
+        # Base case
+        (ast.Comment, (ast.Comment,)),
+        # Or includes all possible ones
+        (dumbconf.Or(ast.Comment, ast.NL), (ast.Comment, ast.NL)),
+        # Pattern stops at the first element
+        (dumbconf.Pattern(ast.Space, ast.Comment), (ast.Space,)),
+        # Pattern with a Star continues though
+        (
+            dumbconf.Pattern(dumbconf.Star(ast.Space), ast.Comment),
+            (ast.Comment, ast.Space),
+        ),
+        # Pattern with a Plus does not
+        (
+            dumbconf.Pattern(dumbconf.Plus(ast.Space), ast.Comment),
+            (ast.Space,),
+        ),
+        # Pattern with nested Star-only pattern continues
+        (
+            dumbconf.Pattern(
+                dumbconf.Pattern(
+                    dumbconf.Star(ast.Space), dumbconf.Star(ast.Comment),
+                ),
+                ast.NL,
+            ),
+            (ast.Comment, ast.NL, ast.Space),
+        ),
+    ),
+)
+def test_pattern_expected(pattern, expected):
+    assert dumbconf._pattern_expected(pattern) == expected
 
 
 @pytest.mark.parametrize(
@@ -145,102 +180,14 @@ def test_parse_quoted_string(quote, s, expected_val):
     assert parse(s) == expected
 
 
-def test_parse_indented_list():
-    ret = parse(
-        '-   True\n'
-        '-   False\n'
-    )
-    expected = ast.Doc(
-        head=(),
-        body=ast.YamlList(items=(
-            ast.YamlListItem(
-                head=(ast.YamlListItemHead('-   '),),
-                val=ast.Bool(True, 'True'),
-                tail=(ast.NL('\n'),),
-            ),
-            ast.YamlListItem(
-                head=(ast.YamlListItemHead('-   '),),
-                val=ast.Bool(False, 'False'),
-                tail=(ast.NL('\n'),),
-            ),
-        )),
-        tail=(),
-    )
-    assert ret == expected
-
-
-def test_parse_indented_list_with_inline_comment():
-    ret = parse('-   "hi"  # hello\n')
-    expected = ast.Doc(
-        head=(),
-        body=ast.YamlList(items=(
-            ast.YamlListItem(
-                head=(ast.YamlListItemHead('-   '),),
-                val=ast.String('hi', '"hi"'),
-                tail=(
-                    ast.Space(' '), ast.Space(' '), ast.Comment('# hello\n'),
-                ),
-            ),
-        )),
-        tail=(),
-    )
-    assert ret == expected
-
-
-def test_parse_indented_list_no_nl_at_eof():
-    ret = parse('-   "hi"')
-    expected = ast.Doc(
-        head=(),
-        body=ast.YamlList(items=(
-            ast.YamlListItem(
-                head=(ast.YamlListItemHead('-   '),),
-                val=ast.String('hi', '"hi"'),
-                tail=(),
-            ),
-        )),
-        tail=(),
-    )
-    assert ret == expected
-
-
-def test_parse_indented_list_internal_comments():
-    ret = parse(
-        '-   "hi"\n'
-        '\n'
-        '# but actually\n'
-        '-   "ohai"\n'
-    )
-    expected = ast.Doc(
-        head=(),
-        body=ast.YamlList(items=(
-            ast.YamlListItem(
-                head=(ast.YamlListItemHead('-   '),),
-                val=ast.String('hi', '"hi"'),
-                tail=(ast.NL('\n'),),
-            ),
-            ast.YamlListItem(
-                head=(
-                    ast.NL('\n'),
-                    ast.Comment('# but actually\n'),
-                    ast.YamlListItemHead('-   '),
-                ),
-                val=ast.String('ohai', '"ohai"'),
-                tail=(ast.NL('\n'),),
-            ),
-        )),
-        tail=(),
-    )
-    assert ret == expected
-
-
 def test_json_trivial_list():
     ret = parse('[]')
     expected = ast.Doc(
         head=(),
-        body=ast.JsonList(
-            head=(ast.JsonListStart('['),),
+        body=ast.List(
+            head=(ast.ListStart('['),),
             items=(),
-            tail=(ast.JsonListEnd(']'),),
+            tail=(ast.ListEnd(']'),),
         ),
         tail=(),
     )
@@ -251,14 +198,14 @@ def test_json_list_one_value_inline():
     ret = parse('[True]')
     expected = ast.Doc(
         head=(),
-        body=ast.JsonList(
-            head=(ast.JsonListStart('['),),
+        body=ast.List(
+            head=(ast.ListStart('['),),
             items=(
-                ast.JsonListItem(
+                ast.ListItem(
                     head=(), val=ast.Bool(val=True, src='True'), tail=(),
                 ),
             ),
-            tail=(ast.JsonListEnd(']'),),
+            tail=(ast.ListEnd(']'),),
         ),
         tail=(),
     )
@@ -269,21 +216,21 @@ def test_json_list_several_values_inline():
     ret = parse('[True, False]')
     expected = ast.Doc(
         head=(),
-        body=ast.JsonList(
-            head=(ast.JsonListStart('['),),
+        body=ast.List(
+            head=(ast.ListStart('['),),
             items=(
-                ast.JsonListItem(
+                ast.ListItem(
                     head=(),
                     val=ast.Bool(val=True, src='True'),
                     tail=(ast.Comma(','), ast.Space(' ')),
                 ),
-                ast.JsonListItem(
+                ast.ListItem(
                     head=(),
                     val=ast.Bool(val=False, src='False'),
                     tail=(),
                 ),
             ),
-            tail=(ast.JsonListEnd(']'),),
+            tail=(ast.ListEnd(']'),),
         ),
         tail=(),
     )
@@ -294,10 +241,10 @@ def test_json_list_multiline_trivial():
     ret = parse('[\n]')
     expected = ast.Doc(
         head=(),
-        body=ast.JsonList(
-            head=(ast.JsonListStart('['), ast.NL('\n')),
+        body=ast.List(
+            head=(ast.ListStart('['), ast.NL('\n')),
             items=(),
-            tail=(ast.JsonListEnd(']'),),
+            tail=(ast.ListEnd(']'),),
         ),
         tail=(),
     )
@@ -312,13 +259,13 @@ def test_json_list_multiline_comments():
     )
     expected = ast.Doc(
         head=(),
-        body=ast.JsonList(
+        body=ast.List(
             head=(
-                ast.JsonListStart('['), ast.NL('\n'),
+                ast.ListStart('['), ast.NL('\n'),
                 ast.Indent('    '), ast.Comment('# Comment\n'),
             ),
             items=(),
-            tail=(ast.JsonListEnd(']'),),
+            tail=(ast.ListEnd(']'),),
         ),
         tail=(),
     )
@@ -333,16 +280,16 @@ def test_json_list_multiline():
     )
     expected = ast.Doc(
         head=(),
-        body=ast.JsonList(
-            head=(ast.JsonListStart('['), ast.NL('\n')),
+        body=ast.List(
+            head=(ast.ListStart('['), ast.NL('\n')),
             items=(
-                ast.JsonListItem(
+                ast.ListItem(
                     head=(ast.Indent('    '),),
                     val=ast.Bool(val=True, src='True'),
                     tail=(ast.Comma(','), ast.NL('\n')),
                 ),
             ),
-            tail=(ast.JsonListEnd(']'),),
+            tail=(ast.ListEnd(']'),),
         ),
         tail=(),
     )
@@ -358,10 +305,10 @@ def test_json_list_multiline_comment_before():
     )
     expected = ast.Doc(
         head=(),
-        body=ast.JsonList(
-            head=(ast.JsonListStart('['), ast.NL('\n')),
+        body=ast.List(
+            head=(ast.ListStart('['), ast.NL('\n')),
             items=(
-                ast.JsonListItem(
+                ast.ListItem(
                     head=(
                         ast.Indent('    '), ast.Comment('# Hello\n'),
                         ast.Indent('    '),
@@ -370,7 +317,7 @@ def test_json_list_multiline_comment_before():
                     tail=(ast.Comma(','), ast.NL('\n')),
                 ),
             ),
-            tail=(ast.JsonListEnd(']'),),
+            tail=(ast.ListEnd(']'),),
         ),
         tail=(),
     )
@@ -386,10 +333,10 @@ def test_json_list_multiline_comment_after():
     )
     expected = ast.Doc(
         head=(),
-        body=ast.JsonList(
-            head=(ast.JsonListStart('['), ast.NL('\n')),
+        body=ast.List(
+            head=(ast.ListStart('['), ast.NL('\n')),
             items=(
-                ast.JsonListItem(
+                ast.ListItem(
                     head=(ast.NL('    '),),
                     val=ast.Bool(val=True, src='True'),
                     tail=(
@@ -398,7 +345,7 @@ def test_json_list_multiline_comment_after():
                     ),
                 ),
             ),
-            tail=(ast.JsonListEnd(']'),),
+            tail=(ast.ListEnd(']'),),
         ),
         tail=(),
     )
@@ -414,21 +361,21 @@ def test_json_list_multiple_items_multiline():
     )
     expected = ast.Doc(
         head=(),
-        body=ast.JsonList(
-            head=(ast.JsonListStart('['), ast.NL('\n')),
+        body=ast.List(
+            head=(ast.ListStart('['), ast.NL('\n')),
             items=(
-                ast.JsonListItem(
+                ast.ListItem(
                     head=(ast.NL('    '),),
                     val=ast.Bool(val=True, src='True'),
                     tail=(ast.Comma(','), ast.NL('\n')),
                 ),
-                ast.JsonListItem(
+                ast.ListItem(
                     head=(ast.NL('    '),),
                     val=ast.Bool(val=False, src='False'),
                     tail=(ast.Comma(','), ast.NL('\n')),
                 ),
             ),
-            tail=(ast.JsonListEnd(']'),),
+            tail=(ast.ListEnd(']'),),
         ),
         tail=(),
     )
@@ -439,10 +386,10 @@ def test_json_map_trivial():
     ret = parse('{}')
     expected = ast.Doc(
         head=(),
-        body=ast.JsonMap(
-            head=(ast.JsonMapStart('{'),),
+        body=ast.Map(
+            head=(ast.MapStart('{'),),
             items=(),
-            tail=(ast.JsonMapEnd('}'),),
+            tail=(ast.MapEnd('}'),),
         ),
         tail=(),
     )
@@ -453,10 +400,10 @@ def test_json_map_one_element_inline():
     ret = parse('{True: False}')
     expected = ast.Doc(
         head=(),
-        body=ast.JsonMap(
-            head=(ast.JsonMapStart('{'),),
+        body=ast.Map(
+            head=(ast.MapStart('{'),),
             items=(
-                ast.JsonMapItem(
+                ast.MapItem(
                     head=(),
                     key=ast.Bool(val=True, src='True'),
                     inner=(ast.Colon(':'), ast.Space(' ')),
@@ -464,7 +411,7 @@ def test_json_map_one_element_inline():
                     tail=(),
                 ),
             ),
-            tail=(ast.JsonMapEnd('}'),),
+            tail=(ast.MapEnd('}'),),
         ),
         tail=(),
     )
@@ -475,17 +422,17 @@ def test_json_map_multiple_elements_inline():
     ret = parse('{True: False, False: True}')
     expected = ast.Doc(
         head=(),
-        body=ast.JsonMap(
-            head=(ast.JsonMapStart('{'),),
+        body=ast.Map(
+            head=(ast.MapStart('{'),),
             items=(
-                ast.JsonMapItem(
+                ast.MapItem(
                     head=(),
                     key=ast.Bool(val=True, src='True'),
                     inner=(ast.Colon(':'), ast.Space(' ')),
                     val=ast.Bool(val=False, src='False'),
                     tail=(ast.Comma(','), ast.Space(' ')),
                 ),
-                ast.JsonMapItem(
+                ast.MapItem(
                     head=(),
                     key=ast.Bool(val=False, src='False'),
                     inner=(ast.Colon(':'), ast.Space(' ')),
@@ -493,7 +440,7 @@ def test_json_map_multiple_elements_inline():
                     tail=(),
                 ),
             ),
-            tail=(ast.JsonMapEnd('}'),),
+            tail=(ast.MapEnd('}'),),
         ),
         tail=(),
     )
@@ -504,10 +451,10 @@ def test_json_map_multiline_trivial():
     ret = parse('{\n}')
     expected = ast.Doc(
         head=(),
-        body=ast.JsonMap(
-            head=(ast.JsonMapStart('{'), ast.NL('\n')),
+        body=ast.Map(
+            head=(ast.MapStart('{'), ast.NL('\n')),
             items=(),
-            tail=(ast.JsonMapEnd('}'),),
+            tail=(ast.MapEnd('}'),),
         ),
         tail=(),
     )
@@ -522,10 +469,10 @@ def test_json_map_multiline_one_element():
     )
     expected = ast.Doc(
         head=(),
-        body=ast.JsonMap(
-            head=(ast.JsonMapStart('{'), ast.NL('\n')),
+        body=ast.Map(
+            head=(ast.MapStart('{'), ast.NL('\n')),
             items=(
-                ast.JsonMapItem(
+                ast.MapItem(
                     head=(ast.Indent('    '),),
                     key=ast.Bool(val=True, src='True'),
                     inner=(ast.Colon(':'), ast.Space(' ')),
@@ -533,7 +480,36 @@ def test_json_map_multiline_one_element():
                     tail=(ast.Comma(','), ast.NL('\n')),
                 ),
             ),
-            tail=(ast.JsonMapEnd('}'),),
+            tail=(ast.MapEnd('}'),),
+        ),
+        tail=(),
+    )
+    assert ret == expected
+
+
+def test_comment_at_start_of_multiline_json():
+    ret = parse(
+        '{  # bar\n'
+        '    True: False,\n'
+        '}'
+    )
+    expected = ast.Doc(
+        head=(),
+        body=ast.Map(
+            head=(
+                ast.MapStart('{'), ast.Space(' '), ast.Space(' '),
+                ast.Comment('# bar\n'),
+            ),
+            items=(
+                ast.MapItem(
+                    head=(ast.Indent('    '),),
+                    key=ast.Bool(val=True, src='True'),
+                    inner=(ast.Colon(':'), ast.Space(' ')),
+                    val=ast.Bool(val=False, src='False'),
+                    tail=(ast.Comma(','), ast.NL('\n')),
+                ),
+            ),
+            tail=(ast.MapEnd('}'),),
         ),
         tail=(),
     )
@@ -609,7 +585,7 @@ def _assert_parse_error(src, s):
 def test_parse_error_no_contents():
     _assert_parse_error(
         '',
-        'Expected one of (String, Bool, Null, JsonListStart, JsonMapStart) '
+        'Expected one of (String, Bool, Null, ListStart, MapStart) '
         'but received EOF',
     )
 
@@ -635,16 +611,4 @@ def test_parse_error_token_expected():
         '----|------------------------------------------------------\n'
         '1   |{True:,}\n'
         '           ^\n',
-    )
-
-
-def test_parse_error_token_while_searching_for_end_of_line():
-    _assert_parse_error(
-        '-   True False',
-        'Expected one of (Space, Comment, NL) but received Bool\n\n'
-        'Line 1, column 10\n\n'
-        'Line|Source\n'
-        '----|------------------------------------------------------\n'
-        '1   |-   True False\n'
-        '              ^\n'
     )

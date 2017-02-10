@@ -77,21 +77,15 @@ def ast_cls(*args, **kwargs):
 class ast:
     Doc = ast_cls('Doc', ('head', 'body', 'tail'))
 
-    YamlList = ast_cls('YamlList', ('items',))
-    YamlListItem = ast_cls('YamlListItem', ('head', 'val', 'tail'))
-    YamlListItemHead = ast_cls('YamlListItemHead', ('src',))
+    List = ast_cls('List', ('head', 'items', 'tail'))
+    ListStart = ast_cls('ListStart', ('src',))
+    ListEnd = ast_cls('ListEnd', ('src',))
+    ListItem = ast_cls('ListItem', ('head', 'val', 'tail'))
 
-    JsonList = ast_cls('JsonList', ('head', 'items', 'tail'))
-    JsonListStart = ast_cls('JsonListStart', ('src',))
-    JsonListEnd = ast_cls('JsonListEnd', ('src',))
-    JsonListItem = ast_cls('JsonListItem', ('head', 'val', 'tail'))
-
-    JsonMap = ast_cls('JsonMap', ('head', 'items', 'tail'))
-    JsonMapStart = ast_cls('JsonMapStart', ('src',))
-    JsonMapEnd = ast_cls('JsonMapEnd', ('src',))
-    JsonMapItem = ast_cls(
-        'JsonMapItem', ('head', 'key', 'inner', 'val', 'tail'),
-    )
+    Map = ast_cls('Map', ('head', 'items', 'tail'))
+    MapStart = ast_cls('MapStart', ('src',))
+    MapEnd = ast_cls('MapEnd', ('src',))
+    MapItem = ast_cls('MapItem', ('head', 'key', 'inner', 'val', 'tail'))
 
     Bool = ast_cls('Bool', ('val', 'src'))
     Null = ast_cls('Null', ('src',))
@@ -128,8 +122,6 @@ STRING_RE = re.compile(_or(
 LIST_START_RE = re.compile(r'\[')
 LIST_END_RE = re.compile(']')
 
-LIST_ITEM_RE = re.compile('-   ')
-
 MAP_START_RE = re.compile('{')
 MAP_END_RE = re.compile('}')
 
@@ -158,11 +150,10 @@ tokenize_processors = (
     (STRING_RE, _reg_parse_val, ast.String, _to_s),
     (BOOL_RE, _reg_parse_val, ast.Bool, _to_bool),
     (NULL_RE, _reg_parse, ast.Null),
-    (LIST_START_RE, _reg_parse, ast.JsonListStart),
-    (LIST_END_RE, _reg_parse, ast.JsonListEnd),
-    (LIST_ITEM_RE, _reg_parse, ast.YamlListItemHead),
-    (MAP_START_RE, _reg_parse, ast.JsonMapStart),
-    (MAP_END_RE, _reg_parse, ast.JsonMapEnd),
+    (LIST_START_RE, _reg_parse, ast.ListStart),
+    (LIST_END_RE, _reg_parse, ast.ListEnd),
+    (MAP_START_RE, _reg_parse, ast.MapStart),
+    (MAP_END_RE, _reg_parse, ast.MapEnd),
     (COLON_RE, _reg_parse, ast.Colon),
     (COMMA_RE, _reg_parse, ast.Comma),
     (COMMENT_RE, _reg_parse, ast.Comment),
@@ -189,6 +180,112 @@ def tokenize(src, offset=0):
     return tuple(tokens)
 
 
+class Pattern(collections.namedtuple('Pattern', ('sequence',))):
+    __slots__ = ()
+
+    def __new__(cls, *args):
+        if len(args) < 2:
+            raise TypeError('Expected a sequence of at least length 2', args)
+        return super(Pattern, cls).__new__(cls, args)
+
+
+class Or(collections.namedtuple('Or', ('choices',))):
+    __slots__ = ()
+
+    def __new__(cls, *args):
+        if len(args) < 2:
+            raise TypeError('Expected at least 2 choices', args)
+        return super(Or, cls).__new__(cls, args)
+
+
+Star = collections.namedtuple('Star', ('pattern',))
+Plus = collections.namedtuple('Plus', ('pattern',))
+
+
+class Match(collections.namedtuple('Match', ('start', 'end', 'tokens'))):
+    __slots__ = ()
+
+    def match(self):
+        return self.tokens[self.start:self.end], self.end
+
+
+def _matches_pattern(tokens, offset, pattern):
+    """Basically a regex language for tokens"""
+    tokenlen = len(tokens)
+    start = offset
+
+    if pattern and offset >= len(tokens):
+        return None
+    elif isinstance(pattern, Pattern):
+        for seq in pattern.sequence:
+            ret = _matches_pattern(tokens, offset, seq)
+            if ret is None:
+                return ret
+            else:
+                _, offset, _ = ret
+        return Match(start, offset, tokens)
+    elif isinstance(pattern, Or):
+        for choice in pattern.choices:
+            ret = _matches_pattern(tokens, offset, choice)
+            if ret is not None:
+                return ret
+        else:
+            return None
+    elif isinstance(pattern, Star):
+        while True:
+            ret = _matches_pattern(tokens, offset, pattern.pattern)
+            if ret is None:
+                break
+            else:
+                _, offset, _ = ret
+        return Match(start, offset, tokens)
+    elif isinstance(pattern, Plus):
+        new_pattern = Pattern(pattern.pattern, Star(pattern.pattern))
+        return _matches_pattern(tokens, offset, new_pattern)
+    elif isinstance(tokens[offset], pattern):
+        return Match(start, offset + 1, tokens)
+    else:
+        return None
+
+
+def _pattern_expected(pattern):
+    """Iterate the pattern and find what should have been next"""
+    def _expected_inner(pattern):
+        if isinstance(pattern, Pattern):
+            ret = set()
+            for part in pattern.sequence:
+                more, done = _expected_inner(part)
+                ret.update(more)
+                if done:
+                    return ret, True
+            return ret, False
+        elif isinstance(pattern, Or):
+            ret = set()
+            done = True
+            for part in pattern.choices:
+                more, part_done = _expected_inner(part)
+                ret.update(more)
+                done = done and part_done
+            return ret, done
+        elif isinstance(pattern, Star):
+            return _expected_inner(pattern.pattern)[0], False
+        elif isinstance(pattern, Plus):
+            return _expected_inner(pattern.pattern)[0], True
+        else:
+            return {pattern}, True
+
+    possible, _ = _expected_inner(pattern)
+    return tuple(sorted(possible, key=lambda cls: cls.__name__))
+
+
+def _get_pattern(tokens, offset, pattern):
+    match = _matches_pattern(tokens, offset, pattern)
+    if match:
+        return match.match()
+    else:
+        _token_expected(tokens, offset, _pattern_expected(pattern))
+
+
 def _get_token(tokens, offset, types):
     if not isinstance(tokens[offset], types):
         _token_expected(tokens, offset, types)
@@ -196,70 +293,23 @@ def _get_token(tokens, offset, types):
         return tokens[offset], offset + 1
 
 
-def _parse_rest_of_line_comment_or_nl(tokens, offset):
-    ret = []
-    while True:
-        if isinstance(tokens[offset], ast.Space):
-            token, offset = _get_token(tokens, offset, ast.Space)
-            ret.append(token)
-        elif isinstance(tokens[offset], (ast.Comment, ast.NL)):
-            token, offset = _get_token(tokens, offset, (ast.Comment, ast.NL))
-            ret.append(token)
-            break
-        elif isinstance(tokens[offset], ast.EOF):
-            break
-        else:
-            _token_expected(tokens, offset, (ast.Space, ast.Comment, ast.NL))
-    return tuple(ret), offset
-
-
-HEAD_TYPES = (ast.Indent, ast.NL, ast.Comment)
+PT_REST_OF_LINE = Or(ast.NL, Pattern(Star(ast.Space), ast.Comment))
+PT_HEAD = Star(Or(ast.Indent, ast.NL, ast.Comment))
 
 
 def _parse_head(tokens, offset):
-    ret = []
-    while True:
-        if isinstance(tokens[offset], HEAD_TYPES):
-            token, offset = _get_token(tokens, offset, HEAD_TYPES)
-            ret.append(token)
-        else:
-            break
-    return tuple(ret), offset
-
-
-def _parse_indented_list_item_head(tokens, offset):
-    head, offset = _parse_head(tokens, offset)
-    rest, offset = _get_token(tokens, offset, ast.YamlListItemHead)
-    return head + (rest,), offset
-
-
-def _parse_indented_list(tokens, offset):
-    items = []
-    while True:
-        if not any(
-            isinstance(token, ast.YamlListItemHead)
-            for token in tokens[offset:]
-        ):
-            break
-        head, offset = _parse_indented_list_item_head(tokens, offset)
-        val, offset = _parse_val(tokens, offset)
-        tail, offset = _parse_rest_of_line_comment_or_nl(tokens, offset)
-        items.append(ast.YamlListItem(head=head, val=val, tail=tail))
-    return ast.YamlList(items=tuple(items)), offset
+    return _get_pattern(tokens, offset, PT_HEAD)
 
 
 def _parse_json_start(tokens, offset, ast_start):
     ret = []
     part, offset = _get_token(tokens, offset, ast_start)
     ret.append(part)
-    multiline = (
-        offset < len(tokens) and
-        isinstance(tokens[offset], (ast.NL, ast.Comment))
-    )
-    if multiline:
-        tail, offset = _parse_rest_of_line_comment_or_nl(tokens, offset)
+    match = _matches_pattern(tokens, offset, PT_REST_OF_LINE)
+    if match:
+        tail, offset = match.match()
         ret.extend(tail)
-    return tuple(ret), offset, multiline
+    return tuple(ret), offset, bool(match)
 
 
 def _parse_json_items(tokens, offset, endtoken, parse_item):
@@ -292,7 +342,7 @@ def _parse_json_items_multiline(tokens, offset, endtoken, parse_item):
             break
         val, offset = parse_item(tokens, offset, head=head)
         comma, offset = _get_token(tokens, offset, ast.Comma)
-        rest, offset = _parse_rest_of_line_comment_or_nl(tokens, offset)
+        rest, offset = _get_pattern(tokens, offset, PT_REST_OF_LINE)
         val = val._replace(tail=val.tail + (comma,) + rest)
         items.append(val)
     return tuple(items), more_head, offset
@@ -308,12 +358,12 @@ def _parse_json(tokens, offset, cls, starttoken, endtoken, parse_item):
 
 def _parse_json_list_item(tokens, offset, head):
     val, offset = _parse_val(tokens, offset)
-    return ast.JsonListItem(head, val, ()), offset
+    return ast.ListItem(head, val, ()), offset
 
 
 _parse_json_list = functools.partial(
     _parse_json,
-    cls=ast.JsonList, starttoken=ast.JsonListStart, endtoken=ast.JsonListEnd,
+    cls=ast.List, starttoken=ast.ListStart, endtoken=ast.ListEnd,
     parse_item=_parse_json_list_item,
 )
 
@@ -323,36 +373,29 @@ def _parse_json_map_item(tokens, offset, head):
     colon, offset = _get_token(tokens, offset, ast.Colon)
     space, offset = _get_token(tokens, offset, ast.Space)
     val, offset = _parse_val(tokens, offset)
-    return ast.JsonMapItem(head, key, (colon, space), val, ()), offset
+    return ast.MapItem(head, key, (colon, space), val, ()), offset
 
 
 _parse_json_map = functools.partial(
     _parse_json,
-    cls=ast.JsonMap, starttoken=ast.JsonMapStart, endtoken=ast.JsonMapEnd,
+    cls=ast.Map, starttoken=ast.MapStart, endtoken=ast.MapEnd,
     parse_item=_parse_json_map_item,
 )
 
 
 VALUE_TOKENS = (ast.String, ast.Bool, ast.Null)
-VALUE_START_TOKENS = VALUE_TOKENS + (ast.JsonListStart, ast.JsonMapStart)
+VALUE_START_TOKENS = VALUE_TOKENS + (ast.ListStart, ast.MapStart)
 
 
 def _parse_val(tokens, offset):
     if isinstance(tokens[offset], VALUE_TOKENS):
         return _get_token(tokens, offset, VALUE_TOKENS)
-    elif isinstance(tokens[offset], ast.JsonListStart):
+    elif isinstance(tokens[offset], ast.ListStart):
         return _parse_json_list(tokens, offset)
-    elif isinstance(tokens[offset], ast.JsonMapStart):
+    elif isinstance(tokens[offset], ast.MapStart):
         return _parse_json_map(tokens, offset)
     else:
         _token_expected(tokens, offset, VALUE_START_TOKENS)
-
-
-def _parse_body(tokens, offset):
-    if isinstance(tokens[offset], ast.YamlListItemHead):
-        return _parse_indented_list(tokens, offset)
-    else:
-        return _parse_val(tokens, offset)
 
 
 def _parse_tail(tokens, offset):
@@ -372,7 +415,7 @@ def parse(src):
     tokens, offset = tokenize(src), 0
 
     head, offset = _parse_head(tokens, offset)
-    body, offset = _parse_body(tokens, offset)
+    body, offset = _parse_val(tokens, offset)
     tail, offset = _parse_tail(tokens, offset)
 
     return ast.Doc(head, body, tail)

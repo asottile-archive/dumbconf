@@ -589,7 +589,7 @@ def _assert_parse_error(src, s):
 def test_parse_error_no_contents():
     _assert_parse_error(
         '',
-        'Expected one of (String, Bool, Null, ListStart, MapStart) '
+        'Expected one of (Bool, ListStart, MapStart, Null, String) '
         'but received EOF',
     )
 

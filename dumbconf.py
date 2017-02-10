@@ -59,8 +59,36 @@ def _tokens_to_src_offset(tokens, offset):
     return src, offset
 
 
-def _token_expected(tokens, offset, expected):
-    expected = expected if isinstance(expected, tuple) else (expected,)
+def _pattern_expected_tokens(pattern):
+    """Iterate the pattern and find what should have been next"""
+    def _expected_inner(pattern):
+        if isinstance(pattern, Pattern):
+            ret = set()
+            for part in pattern.sequence:
+                more, done = _expected_inner(part)
+                ret.update(more)
+                if done:
+                    return ret, True
+            return ret, False
+        elif isinstance(pattern, Or):
+            ret = set()
+            done = True
+            for part in pattern.choices:
+                more, part_done = _expected_inner(part)
+                ret.update(more)
+                done = done and part_done
+            return ret, done
+        elif isinstance(pattern, Star):
+            return _expected_inner(pattern.pattern)[0], False
+        else:
+            return {pattern}, True
+
+    possible, _ = _expected_inner(pattern)
+    return tuple(sorted(possible, key=lambda cls: cls.__name__))
+
+
+def _pattern_expected(tokens, offset, pattern):
+    expected = _pattern_expected_tokens(pattern)
     msg = 'Expected one of ({}) but received {}'.format(
         ', '.join(cls.__name__ for cls in expected),
         type(tokens[offset]).__name__,
@@ -247,37 +275,7 @@ def _matches_pattern(
         return cb(tokens, offset, pattern)
 
 
-def _pattern_expected_tokens(pattern):
-    """Iterate the pattern and find what should have been next"""
-    def _expected_inner(pattern):
-        if isinstance(pattern, Pattern):
-            ret = set()
-            for part in pattern.sequence:
-                more, done = _expected_inner(part)
-                ret.update(more)
-                if done:
-                    return ret, True
-            return ret, False
-        elif isinstance(pattern, Or):
-            ret = set()
-            done = True
-            for part in pattern.choices:
-                more, part_done = _expected_inner(part)
-                ret.update(more)
-                done = done and part_done
-            return ret, done
-        elif isinstance(pattern, Star):
-            return _expected_inner(pattern.pattern)[0], False
-        else:
-            return {pattern}, True
-
-    possible, _ = _expected_inner(pattern)
-    return tuple(sorted(possible, key=lambda cls: cls.__name__))
-
-
 def _get_pattern(tokens, offset, pattern, single=False):
-    def _pattern_expected(tokens, offset, pattern):
-        _token_expected(tokens, offset, _pattern_expected_tokens(pattern))
     match = _matches_pattern(tokens, offset, pattern, _pattern_expected)
     val, offset = match.match()
     if single:
@@ -370,7 +368,6 @@ _parse_json_map = functools.partial(
 
 
 PT_VALUE_TOKENS = Or(ast.String, ast.Bool, ast.Null)
-VALUE_START_TOKENS = PT_VALUE_TOKENS.choices + (ast.ListStart, ast.MapStart)
 
 
 def _parse_val(tokens, offset):
@@ -381,7 +378,8 @@ def _parse_val(tokens, offset):
     elif _matches_pattern(tokens, offset, ast.MapStart):
         return _parse_json_map(tokens, offset)
     else:
-        _token_expected(tokens, offset, VALUE_START_TOKENS)
+        missing_pattern = Or(PT_VALUE_TOKENS, ast.ListStart, ast.MapStart)
+        _pattern_expected(tokens, offset, missing_pattern)
 
 
 def _parse_eof(tokens, offset):

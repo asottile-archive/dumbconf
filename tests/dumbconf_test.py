@@ -162,7 +162,7 @@ def test_parse_boolean(s, expected_val):
 
 @pytest.mark.parametrize('s', ('NULL', 'null', 'None', 'nil'))
 def test_parse_null(s):
-    expected = ast.Doc(head=(), body=ast.Null(src=s), tail=())
+    expected = ast.Doc(head=(), body=ast.Null(None, src=s), tail=())
     assert parse(s) == expected
 
 
@@ -511,6 +511,28 @@ def test_comment_at_start_of_multiline_json():
                     inner=(ast.Colon(':'), ast.Space(' ')),
                     val=ast.Bool(val=False, src='False'),
                     tail=(ast.Comma(','), ast.NL('\n')),
+                ),
+            ),
+            tail=(ast.MapEnd('}'),),
+        ),
+        tail=(),
+    )
+    assert ret == expected
+
+
+def test_map_bare_word_key():
+    ret = parse("{_Key-str1ng: 'value'}")
+    expected = ast.Doc(
+        head=(),
+        body=ast.Map(
+            head=(ast.MapStart('{'),),
+            items=(
+                ast.MapItem(
+                    head=(),
+                    key=ast.BareWordKey('_Key-str1ng', '_Key-str1ng'),
+                    inner=(ast.Colon(':'), ast.Space(' ')),
+                    val=ast.String(val='value', src="'value'"),
+                    tail=(),
                 ),
             ),
             tail=(ast.MapEnd('}'),),

@@ -116,8 +116,9 @@ class ast:
     MapItem = ast_cls('MapItem', ('head', 'key', 'inner', 'val', 'tail'))
 
     Bool = ast_cls('Bool', ('val', 'src'))
-    Null = ast_cls('Null', ('src',))
+    Null = ast_cls('Null', ('val', 'src',))
     String = ast_cls('String', ('val', 'src'))
+    BareWordKey = ast_cls('BareWordKey', ('val', 'src'))
 
     Colon = ast_cls('Colon', ('src',))
     Comma = ast_cls('Comma', ('src',))
@@ -145,6 +146,7 @@ NULL_RE = re.compile(_or('NULL', 'null', 'None', 'nil'))
 STRING_RE = re.compile(_or(
     r"'[^\n'\\]*(?:\\.[^\n'\\]*)*'", r'"[^\n"\\]*(?:\\.[^\n"\\]*)*"',
 ))
+BARE_WORD_KEY_RE = re.compile('[A-Za-z_][a-zA-Z0-9_-]*')
 
 
 LIST_START_RE = re.compile(r'\[')
@@ -165,19 +167,27 @@ def _reg_parse_val(reg, cls, to_val_func, src, offset):
     return cls(val, match.group()), match.end()
 
 
-def _to_bool(s):
-    return python_ast.literal_eval(s.lower().capitalize())
-
-
 def _to_s(s):
     # python2 will literal_eval as bytes
     return python_ast.literal_eval('u' + s)
 
 
+def _to_bool(s):
+    return python_ast.literal_eval(s.lower().capitalize())
+
+
+def _to_null(s):
+    return None
+
+
+def _identity(s):
+    return s
+
+
 tokenize_processors = (
     (STRING_RE, _reg_parse_val, ast.String, _to_s),
     (BOOL_RE, _reg_parse_val, ast.Bool, _to_bool),
-    (NULL_RE, _reg_parse, ast.Null),
+    (NULL_RE, _reg_parse_val, ast.Null, _to_null),
     (LIST_START_RE, _reg_parse, ast.ListStart),
     (LIST_END_RE, _reg_parse, ast.ListEnd),
     (MAP_START_RE, _reg_parse, ast.MapStart),
@@ -188,6 +198,8 @@ tokenize_processors = (
     (INDENT_RE, _reg_parse, ast.Indent),
     (NL_RE, _reg_parse, ast.NL),
     (SPACE_RE, _reg_parse, ast.Space),
+    # Lowest priority token
+    (BARE_WORD_KEY_RE, _reg_parse_val, ast.BareWordKey, _identity),
 )
 
 
@@ -287,6 +299,8 @@ PT_REST_OF_LINE = Or(ast.NL, Pattern(Star(ast.Space), ast.Comment))
 PT_HEAD = Star(Or(ast.Indent, ast.NL, ast.Comment))
 PT_COLON_SPACE = Pattern(ast.Colon, ast.Space)
 PT_COMMA_SPACE = Pattern(ast.Comma, ast.Space)
+PT_VALUE_TOKENS = Or(ast.String, ast.Bool, ast.Null)
+PT_KEY = Or(PT_VALUE_TOKENS, ast.BareWordKey)
 
 
 def _parse_json_start(tokens, offset, ast_start):
@@ -354,7 +368,7 @@ _parse_json_list = functools.partial(
 
 
 def _parse_json_map_item(tokens, offset, head):
-    key, offset = _parse_val(tokens, offset)
+    key, offset = _get_pattern(tokens, offset, PT_KEY, single=True)
     colon_space, offset = _get_pattern(tokens, offset, PT_COLON_SPACE)
     val, offset = _parse_val(tokens, offset)
     return ast.MapItem(head, key, colon_space, val, ()), offset
@@ -365,9 +379,6 @@ _parse_json_map = functools.partial(
     cls=ast.Map, starttoken=ast.MapStart, endtoken=ast.MapEnd,
     parse_item=_parse_json_map_item,
 )
-
-
-PT_VALUE_TOKENS = Or(ast.String, ast.Bool, ast.Null)
 
 
 def _parse_val(tokens, offset):

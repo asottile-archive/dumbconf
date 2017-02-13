@@ -677,3 +677,130 @@ def test_loads_map():
     ret = dumbconf.loads(src)
     assert isinstance(ret, collections.OrderedDict)
     assert ret == {'a': 'a_value', 'b': 'b_value', 'c': 'c_value'}
+
+
+def test_rt_replace_value_same_type():
+    val = dumbconf.loads_roundtrip('True  # comment')
+    val.replace_value(False)
+    ret = dumbconf.dumps_roundtrip(val)
+    assert ret == 'False  # comment'
+
+
+def test_rt_replace_value_new_type():
+    val = dumbconf.loads_roundtrip('True  # comment')
+    val.replace_value(None)
+    ret = dumbconf.dumps_roundtrip(val)
+    assert ret == 'None  # comment'
+
+
+def test_rt_replace_string():
+    val = dumbconf.loads_roundtrip('True  # comment')
+    val.replace_value('ohai')
+    ret = dumbconf.dumps_roundtrip(val)
+    assert ret == "'ohai'  # comment"
+
+
+def test_rt_replace_map_value_top_level():
+    val = dumbconf.loads_roundtrip(
+        '{\n'
+        '    a: True,  # comment\n'
+        '    b: False,  # comment\n'
+        '}\n'
+    )
+    val['b'] = None
+    ret = dumbconf.dumps_roundtrip(val)
+    assert ret == (
+        '{\n'
+        '    a: True,  # comment\n'
+        '    b: None,  # comment\n'
+        '}\n'
+    )
+
+
+def test_rt_replace_list_value_top_level():
+    val = dumbconf.loads_roundtrip(
+        '[\n'
+        '    True,  # comment\n'
+        '    False,  # comment\n'
+        ']\n'
+    )
+    val[0] = None
+    ret = dumbconf.dumps_roundtrip(val)
+    assert ret == (
+        '[\n'
+        '    None,  # comment\n'
+        '    False,  # comment\n'
+        ']\n'
+    )
+
+
+def test_rt_replace_nested_map_value():
+    val = dumbconf.loads_roundtrip(
+        '{\n'
+        '    a: {\n'
+        '        b: True,  # comment\n'
+        '    },\n'
+        '}\n'
+    )
+    val['a']['b'] = None
+    ret = dumbconf.dumps_roundtrip(val)
+    assert ret == (
+        '{\n'
+        '    a: {\n'
+        '        b: None,  # comment\n'
+        '    },\n'
+        '}\n'
+    )
+
+
+def test_rt_deplace_nested_map_value_deeper():
+    val = dumbconf.loads_roundtrip('{a: {b: {c: True}}}')
+    val['a']['b']['c'] = False
+    ret = dumbconf.dumps_roundtrip(val)
+    assert ret == '{a: {b: {c: False}}}'
+
+
+def test_rt_delete_dictionary_key():
+    val = dumbconf.loads_roundtrip(
+        '{\n'
+        '    # comment documenting a\n'
+        '    a: True,  # comment\n'
+        '    # comment documenting b\n'
+        '    b: False,  # comment\n'
+        '}\n'
+    )
+    del val['a']
+    ret = dumbconf.dumps_roundtrip(val)
+    assert ret == (
+        '{\n'
+        '    # comment documenting b\n'
+        '    b: False,  # comment\n'
+        '}\n'
+    )
+
+
+def test_rt_delete_nested():
+    val = dumbconf.loads_roundtrip(
+        '{\n'
+        '    a: {\n'
+        '        b: True,\n'
+        '        c: True,\n'
+        '    },\n'
+        '}\n'
+    )
+    del val['a']['b']
+    ret = dumbconf.dumps_roundtrip(val)
+    assert ret == (
+        '{\n'
+        '    a: {\n'
+        '        c: True,\n'
+        '    },\n'
+        '}\n'
+    )
+
+
+def test_rt_delete_nested_fixup_trailing_comma_inline():
+    val = dumbconf.loads_roundtrip('{a: {b: {c: True, d: False}}}')
+    del val['a']['b']['d']
+    ret = dumbconf.dumps_roundtrip(val)
+    assert ret == '{a: {b: {c: True}}}'

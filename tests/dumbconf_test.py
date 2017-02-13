@@ -243,6 +243,18 @@ def test_json_list_several_values_inline():
     assert ret == expected
 
 
+def test_regression_inline_list_missing_comma():
+    _assert_parse_error(
+        '[TrueFalse]',
+        'Expected one of (Comma) but received Bool\n\n'
+        'Line 1, column 6\n\n'
+        'Line|Source\n'
+        '----|------------------------------------------------------\n'
+        '1   |[TrueFalse]\n'
+        '          ^\n',
+    )
+
+
 def test_json_list_multiline_trivial():
     ret = parse('[\n]')
     expected = ast.Doc(

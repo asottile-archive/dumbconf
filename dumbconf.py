@@ -318,7 +318,7 @@ def _parse_json_items(tokens, offset, endtoken, parse_item):
         if isinstance(tokens[offset], endtoken):
             break
         val, offset = parse_item(tokens, offset, head=())
-        if offset < len(tokens) and isinstance(tokens[offset], ast.Comma):
+        if not isinstance(tokens[offset], endtoken):
             comma_space, offset = _get_pattern(tokens, offset, PT_COMMA_SPACE)
             val = val._replace(tail=val.tail + comma_space)
         items.append(val)

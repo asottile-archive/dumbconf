@@ -89,7 +89,7 @@ def test_debug():
     assert ret == (
         'Doc(\n'
         '    head=(),\n'
-        '    body=List(\n'
+        '    val=List(\n'
         '        head=(\n'
         "            ListStart(src='['),\n"
         '        ),\n'
@@ -157,14 +157,14 @@ def test_pattern_expected_tokens(pattern, expected):
 )
 def test_parse_boolean(s, expected_val):
     expected = ast.Doc(
-        head=(), body=ast.Bool(val=expected_val, src=s), tail=(),
+        head=(), val=ast.Bool(val=expected_val, src=s), tail=(),
     )
     assert parse(s) == expected
 
 
 @pytest.mark.parametrize('s', ('NULL', 'null', 'None', 'nil'))
 def test_parse_null(s):
-    expected = ast.Doc(head=(), body=ast.Null(None, src=s), tail=())
+    expected = ast.Doc(head=(), val=ast.Null(None, src=s), tail=())
     assert parse(s) == expected
 
 
@@ -181,7 +181,7 @@ def test_parse_quoted_string(quote, s, expected_val):
     s = s.replace("'", quote)
     expected_val = expected_val.replace("'", quote)
     expected = ast.Doc(
-        head=(), body=ast.String(val=expected_val, src=s), tail=(),
+        head=(), val=ast.String(val=expected_val, src=s), tail=(),
     )
     assert parse(s) == expected
 
@@ -190,7 +190,7 @@ def test_json_trivial_list():
     ret = parse('[]')
     expected = ast.Doc(
         head=(),
-        body=ast.List(
+        val=ast.List(
             head=(ast.ListStart('['),),
             items=(),
             tail=(ast.ListEnd(']'),),
@@ -204,7 +204,7 @@ def test_json_list_one_value_inline():
     ret = parse('[True]')
     expected = ast.Doc(
         head=(),
-        body=ast.List(
+        val=ast.List(
             head=(ast.ListStart('['),),
             items=(
                 ast.ListItem(
@@ -222,7 +222,7 @@ def test_json_list_several_values_inline():
     ret = parse('[True, False]')
     expected = ast.Doc(
         head=(),
-        body=ast.List(
+        val=ast.List(
             head=(ast.ListStart('['),),
             items=(
                 ast.ListItem(
@@ -247,7 +247,7 @@ def test_json_list_multiline_trivial():
     ret = parse('[\n]')
     expected = ast.Doc(
         head=(),
-        body=ast.List(
+        val=ast.List(
             head=(ast.ListStart('['), ast.NL('\n')),
             items=(),
             tail=(ast.ListEnd(']'),),
@@ -265,7 +265,7 @@ def test_json_list_multiline_comments():
     )
     expected = ast.Doc(
         head=(),
-        body=ast.List(
+        val=ast.List(
             head=(
                 ast.ListStart('['), ast.NL('\n'),
                 ast.Indent('    '), ast.Comment('# Comment\n'),
@@ -286,7 +286,7 @@ def test_json_list_multiline():
     )
     expected = ast.Doc(
         head=(),
-        body=ast.List(
+        val=ast.List(
             head=(ast.ListStart('['), ast.NL('\n')),
             items=(
                 ast.ListItem(
@@ -311,7 +311,7 @@ def test_json_list_multiline_comment_before():
     )
     expected = ast.Doc(
         head=(),
-        body=ast.List(
+        val=ast.List(
             head=(ast.ListStart('['), ast.NL('\n')),
             items=(
                 ast.ListItem(
@@ -339,7 +339,7 @@ def test_json_list_multiline_comment_after():
     )
     expected = ast.Doc(
         head=(),
-        body=ast.List(
+        val=ast.List(
             head=(ast.ListStart('['), ast.NL('\n')),
             items=(
                 ast.ListItem(
@@ -367,7 +367,7 @@ def test_json_list_multiple_items_multiline():
     )
     expected = ast.Doc(
         head=(),
-        body=ast.List(
+        val=ast.List(
             head=(ast.ListStart('['), ast.NL('\n')),
             items=(
                 ast.ListItem(
@@ -392,7 +392,7 @@ def test_json_map_trivial():
     ret = parse('{}')
     expected = ast.Doc(
         head=(),
-        body=ast.Map(
+        val=ast.Map(
             head=(ast.MapStart('{'),),
             items=(),
             tail=(ast.MapEnd('}'),),
@@ -406,7 +406,7 @@ def test_json_map_one_element_inline():
     ret = parse('{True: False}')
     expected = ast.Doc(
         head=(),
-        body=ast.Map(
+        val=ast.Map(
             head=(ast.MapStart('{'),),
             items=(
                 ast.MapItem(
@@ -428,7 +428,7 @@ def test_json_map_multiple_elements_inline():
     ret = parse('{True: False, False: True}')
     expected = ast.Doc(
         head=(),
-        body=ast.Map(
+        val=ast.Map(
             head=(ast.MapStart('{'),),
             items=(
                 ast.MapItem(
@@ -457,7 +457,7 @@ def test_json_map_multiline_trivial():
     ret = parse('{\n}')
     expected = ast.Doc(
         head=(),
-        body=ast.Map(
+        val=ast.Map(
             head=(ast.MapStart('{'), ast.NL('\n')),
             items=(),
             tail=(ast.MapEnd('}'),),
@@ -475,7 +475,7 @@ def test_json_map_multiline_one_element():
     )
     expected = ast.Doc(
         head=(),
-        body=ast.Map(
+        val=ast.Map(
             head=(ast.MapStart('{'), ast.NL('\n')),
             items=(
                 ast.MapItem(
@@ -501,7 +501,7 @@ def test_comment_at_start_of_multiline_json():
     )
     expected = ast.Doc(
         head=(),
-        body=ast.Map(
+        val=ast.Map(
             head=(
                 ast.MapStart('{'), ast.Space(' '), ast.Space(' '),
                 ast.Comment('# bar\n'),
@@ -526,7 +526,7 @@ def test_map_bare_word_key():
     ret = parse("{_Key-str1ng: 'value'}")
     expected = ast.Doc(
         head=(),
-        body=ast.Map(
+        val=ast.Map(
             head=(ast.MapStart('{'),),
             items=(
                 ast.MapItem(
@@ -548,7 +548,7 @@ def test_file_starting_in_ws():
     ret = parse('\n\nTrue')
     expected = ast.Doc(
         head=(ast.NL('\n'), ast.NL('\n')),
-        body=ast.Bool(val=True, src='True'),
+        val=ast.Bool(val=True, src='True'),
         tail=(),
     )
     assert ret == expected
@@ -557,7 +557,7 @@ def test_file_starting_in_ws():
 def test_file_ending_in_ws():
     ret = parse('True\n')
     expected = ast.Doc(
-        head=(), body=ast.Bool(val=True, src='True'), tail=(ast.NL('\n'),),
+        head=(), val=ast.Bool(val=True, src='True'), tail=(ast.NL('\n'),),
     )
     assert ret == expected
 
@@ -566,7 +566,7 @@ def test_file_starting_with_comments():
     ret = parse('# hello\nTrue')
     expected = ast.Doc(
         head=(ast.Comment('# hello\n'),),
-        body=ast.Bool(val=True, src='True'),
+        val=ast.Bool(val=True, src='True'),
         tail=(),
     )
     assert ret == expected
@@ -576,7 +576,7 @@ def test_file_ending_in_comment():
     ret = parse('True # ohai\n')
     expected = ast.Doc(
         head=(),
-        body=ast.Bool(val=True, src='True'),
+        val=ast.Bool(val=True, src='True'),
         tail=(ast.Space(' '), ast.Comment('# ohai\n')),
     )
     assert ret == expected
@@ -586,7 +586,7 @@ def test_file_ending_in_comment_no_nl():
     ret = parse('True # ohai')
     expected = ast.Doc(
         head=(),
-        body=ast.Bool(val=True, src='True'),
+        val=ast.Bool(val=True, src='True'),
         tail=(ast.Space(' '), ast.Comment('# ohai')),
     )
     assert ret == expected
@@ -596,7 +596,7 @@ def test_file_ending_in_several_comments():
     ret = parse('True\n# hello\n# there\n')
     expected = ast.Doc(
         head=(),
-        body=ast.Bool(val=True, src='True'),
+        val=ast.Bool(val=True, src='True'),
         tail=(
             ast.NL('\n'), ast.Comment('# hello\n'), ast.Comment('# there\n'),
         ),

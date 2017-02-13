@@ -103,7 +103,7 @@ def ast_cls(*args, **kwargs):
 
 
 class ast:
-    Doc = ast_cls('Doc', ('head', 'body', 'tail'))
+    Doc = ast_cls('Doc', ('head', 'val', 'tail'))
 
     List = ast_cls('List', ('head', 'items', 'tail'))
     ListStart = ast_cls('ListStart', ('src',))
@@ -404,10 +404,10 @@ def parse(src):
     tokens, offset = tokenize(src), 0
 
     head, offset = _get_pattern(tokens, offset, PT_HEAD)
-    body, offset = _parse_val(tokens, offset)
+    val, offset = _parse_val(tokens, offset)
     tail, offset = _parse_eof(tokens, offset)
 
-    return ast.Doc(head, body, tail)
+    return ast.Doc(head, val, tail)
 
 
 def unparse(ast_obj):
@@ -465,7 +465,7 @@ def debug(ast_obj, _indent=0):
 
 def _to_python_value(ast_obj):
     if isinstance(ast_obj, ast.Doc):
-        return _to_python_value(ast_obj.body)
+        return _to_python_value(ast_obj.val)
     elif isinstance(
             ast_obj, (ast.BareWordKey, ast.Bool, ast.Null, ast.String),
     ):

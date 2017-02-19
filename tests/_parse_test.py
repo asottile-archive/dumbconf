@@ -1,92 +1,30 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-import collections
-
 import pytest
 
-import dumbconf
-from dumbconf import _tre
 from dumbconf import ast
-from dumbconf import ParseError
+from dumbconf._error import ParseError
+from dumbconf._parse import debug
+from dumbconf._parse import parse as parse_actual
+from dumbconf._parse import unparse
 
 
 def parse(s):
     """An assertion that roundtripping works"""
-    ret = dumbconf.parse(s)
-    assert dumbconf.unparse(ret) == s
+    ret = parse_actual(s)
+    assert unparse(ret) == s
     return ret
 
 
-def test_parse_error_no_source():
-    assert str(ParseError('', 0, 'No source!')) == 'No source!'
-
-
-def test_parse_error_trivial():
-    assert str(ParseError('src', 0)) == (
-        '\n\n'
-        'Line 1, column 1\n\n'
-        'Line|Source\n'
-        '----|------------------------------------------------------\n'
-        '1   |src\n'
-        '     ^\n'
-    )
-
-
-def test_parse_error_with_message():
-    assert str(ParseError('src', 0, 'Error!')) == (
-        'Error!\n\n'
-        'Line 1, column 1\n\n'
-        'Line|Source\n'
-        '----|------------------------------------------------------\n'
-        '1   |src\n'
-        '     ^\n'
-    )
-
-
-def test_parse_error_end_of_line():
-    assert str(ParseError('foo\nbar\n', 3, 'Error!')) == (
-        'Error!\n\n'
-        'Line 1, column 4\n\n'
-        'Line|Source\n'
-        '----|------------------------------------------------------\n'
-        '1   |foo\n'
-        '        ^\n'
-        '2   |bar\n'
-    )
-
-
-def test_parse_error_multiple_lines():
-    assert str(ParseError('foo\nbar\n', 4)) == (
-        '\n\n'
-        'Line 2, column 1\n'
-        '\n'
-        'Line|Source\n'
-        '----|------------------------------------------------------\n'
-        '1   |foo\n'
-        '2   |bar\n'
-        '     ^\n'
-    )
-
-
-def test_parse_error_many_lines():
-    assert str(ParseError('a\nb\nc\nd\ne\nf\ng\n', 6)) == (
-        '\n\n'
-        'Line 4, column 1\n'
-        '\n'
-        'Line|Source\n'
-        '----|------------------------------------------------------\n'
-        '2   |b\n'
-        '3   |c\n'
-        '4   |d\n'
-        '     ^\n'
-        '5   |e\n'
-        '6   |f\n'
-    )
+def _assert_parse_error(src, s):
+    with pytest.raises(ParseError) as excinfo:
+        parse(src)
+    assert str(excinfo.value) == s
 
 
 def test_debug():
-    ret = dumbconf.debug(dumbconf.parse('[True]'))
+    ret = debug(parse('[True]'))
     assert ret == (
         'Doc(\n'
         '    head=(),\n'
@@ -108,43 +46,6 @@ def test_debug():
         '    tail=(),\n'
         ')'
     )
-
-
-@pytest.mark.parametrize(
-    ('pattern', 'expected'),
-    (
-        # Base case
-        (ast.Comment, (ast.Comment,)),
-        # Or includes all possible ones
-        (_tre.Or(ast.Comment, ast.NL), (ast.Comment, ast.NL)),
-        # Pattern stops at the first element
-        (_tre.Pattern(ast.Space, ast.Comment), (ast.Space,)),
-        # Pattern with a Star continues though
-        (
-            _tre.Pattern(_tre.Star(ast.Space), ast.Comment),
-            (ast.Comment, ast.Space),
-        ),
-        # Pattern with a "Plus" does not
-        (
-            _tre.Pattern(
-                # Essentially Plus(ast.Space)
-                _tre.Pattern(ast.Space, _tre.Star(ast.Space)),
-                ast.Comment,
-            ),
-            (ast.Space,),
-        ),
-        # Pattern with nested Star-only pattern continues
-        (
-            _tre.Pattern(
-                _tre.Pattern(_tre.Star(ast.Space), _tre.Star(ast.Comment)),
-                ast.NL,
-            ),
-            (ast.Comment, ast.NL, ast.Space),
-        ),
-    ),
-)
-def test_pattern_expected_tokens(pattern, expected):
-    assert _tre._pattern_expected_tokens(pattern) == expected
 
 
 @pytest.mark.parametrize(
@@ -615,29 +516,11 @@ def test_file_ending_in_several_comments():
     assert ret == expected
 
 
-def _assert_parse_error(src, s):
-    with pytest.raises(dumbconf.ParseError) as excinfo:
-        parse(src)
-    assert str(excinfo.value) == s
-
-
 def test_parse_error_no_contents():
     _assert_parse_error(
         '',
         'Expected one of (Bool, ListStart, MapStart, Null, String) '
         'but received EOF',
-    )
-
-
-def test_parse_error_unexpected_token():
-    _assert_parse_error(
-        '&',
-        'Unexpected token\n\n'
-        'Line 1, column 1\n\n'
-        'Line|Source\n'
-        '----|------------------------------------------------------\n'
-        '1   |&\n'
-        '     ^\n',
     )
 
 
@@ -651,155 +534,3 @@ def test_parse_error_token_expected():
         '1   |{True:,}\n'
         '           ^\n',
     )
-
-
-@pytest.mark.parametrize(
-    ('s', 'expected'),
-    (
-        ('True', True),
-        ('False', False),
-        ('None', None),
-        ("'ohai'", 'ohai'),
-    ),
-)
-def test_loads_simple(s, expected):
-    assert dumbconf.loads(s) == expected
-
-
-def test_loads_list():
-    src = '[True, False, "string"]'
-    assert dumbconf.loads(src) == [True, False, 'string']
-
-
-def test_loads_map():
-    src = "{a: 'a_value', b: 'b_value', c: 'c_value'}"
-    ret = dumbconf.loads(src)
-    assert isinstance(ret, collections.OrderedDict)
-    assert ret == {'a': 'a_value', 'b': 'b_value', 'c': 'c_value'}
-
-
-def test_rt_replace_value_same_type():
-    val = dumbconf.loads_roundtrip('True  # comment')
-    val.replace_value(False)
-    ret = dumbconf.dumps_roundtrip(val)
-    assert ret == 'False  # comment'
-
-
-def test_rt_replace_value_new_type():
-    val = dumbconf.loads_roundtrip('True  # comment')
-    val.replace_value(None)
-    ret = dumbconf.dumps_roundtrip(val)
-    assert ret == 'None  # comment'
-
-
-def test_rt_replace_string():
-    val = dumbconf.loads_roundtrip('True  # comment')
-    val.replace_value('ohai')
-    ret = dumbconf.dumps_roundtrip(val)
-    assert ret == "'ohai'  # comment"
-
-
-def test_rt_replace_map_value_top_level():
-    val = dumbconf.loads_roundtrip(
-        '{\n'
-        '    a: True,  # comment\n'
-        '    b: False,  # comment\n'
-        '}\n'
-    )
-    val['b'] = None
-    ret = dumbconf.dumps_roundtrip(val)
-    assert ret == (
-        '{\n'
-        '    a: True,  # comment\n'
-        '    b: None,  # comment\n'
-        '}\n'
-    )
-
-
-def test_rt_replace_list_value_top_level():
-    val = dumbconf.loads_roundtrip(
-        '[\n'
-        '    True,  # comment\n'
-        '    False,  # comment\n'
-        ']\n'
-    )
-    val[0] = None
-    ret = dumbconf.dumps_roundtrip(val)
-    assert ret == (
-        '[\n'
-        '    None,  # comment\n'
-        '    False,  # comment\n'
-        ']\n'
-    )
-
-
-def test_rt_replace_nested_map_value():
-    val = dumbconf.loads_roundtrip(
-        '{\n'
-        '    a: {\n'
-        '        b: True,  # comment\n'
-        '    },\n'
-        '}\n'
-    )
-    val['a']['b'] = None
-    ret = dumbconf.dumps_roundtrip(val)
-    assert ret == (
-        '{\n'
-        '    a: {\n'
-        '        b: None,  # comment\n'
-        '    },\n'
-        '}\n'
-    )
-
-
-def test_rt_deplace_nested_map_value_deeper():
-    val = dumbconf.loads_roundtrip('{a: {b: {c: True}}}')
-    val['a']['b']['c'] = False
-    ret = dumbconf.dumps_roundtrip(val)
-    assert ret == '{a: {b: {c: False}}}'
-
-
-def test_rt_delete_dictionary_key():
-    val = dumbconf.loads_roundtrip(
-        '{\n'
-        '    # comment documenting a\n'
-        '    a: True,  # comment\n'
-        '    # comment documenting b\n'
-        '    b: False,  # comment\n'
-        '}\n'
-    )
-    del val['a']
-    ret = dumbconf.dumps_roundtrip(val)
-    assert ret == (
-        '{\n'
-        '    # comment documenting b\n'
-        '    b: False,  # comment\n'
-        '}\n'
-    )
-
-
-def test_rt_delete_nested():
-    val = dumbconf.loads_roundtrip(
-        '{\n'
-        '    a: {\n'
-        '        b: True,\n'
-        '        c: True,\n'
-        '    },\n'
-        '}\n'
-    )
-    del val['a']['b']
-    ret = dumbconf.dumps_roundtrip(val)
-    assert ret == (
-        '{\n'
-        '    a: {\n'
-        '        c: True,\n'
-        '    },\n'
-        '}\n'
-    )
-
-
-def test_rt_delete_nested_fixup_trailing_comma_inline():
-    val = dumbconf.loads_roundtrip('{a: {b: {c: True, d: False}}}')
-    del val['a']['b']['d']
-    ret = dumbconf.dumps_roundtrip(val)
-    assert ret == '{a: {b: {c: True}}}'

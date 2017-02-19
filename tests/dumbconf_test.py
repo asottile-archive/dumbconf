@@ -6,6 +6,7 @@ import collections
 import pytest
 
 import dumbconf
+from dumbconf import _tre
 from dumbconf import ast
 from dumbconf import ParseError
 
@@ -115,29 +116,27 @@ def test_debug():
         # Base case
         (ast.Comment, (ast.Comment,)),
         # Or includes all possible ones
-        (dumbconf.Or(ast.Comment, ast.NL), (ast.Comment, ast.NL)),
+        (_tre.Or(ast.Comment, ast.NL), (ast.Comment, ast.NL)),
         # Pattern stops at the first element
-        (dumbconf.Pattern(ast.Space, ast.Comment), (ast.Space,)),
+        (_tre.Pattern(ast.Space, ast.Comment), (ast.Space,)),
         # Pattern with a Star continues though
         (
-            dumbconf.Pattern(dumbconf.Star(ast.Space), ast.Comment),
+            _tre.Pattern(_tre.Star(ast.Space), ast.Comment),
             (ast.Comment, ast.Space),
         ),
         # Pattern with a "Plus" does not
         (
-            dumbconf.Pattern(
+            _tre.Pattern(
                 # Essentially Plus(ast.Space)
-                dumbconf.Pattern(ast.Space, dumbconf.Star(ast.Space)),
+                _tre.Pattern(ast.Space, _tre.Star(ast.Space)),
                 ast.Comment,
             ),
             (ast.Space,),
         ),
         # Pattern with nested Star-only pattern continues
         (
-            dumbconf.Pattern(
-                dumbconf.Pattern(
-                    dumbconf.Star(ast.Space), dumbconf.Star(ast.Comment),
-                ),
+            _tre.Pattern(
+                _tre.Pattern(_tre.Star(ast.Space), _tre.Star(ast.Comment)),
                 ast.NL,
             ),
             (ast.Comment, ast.NL, ast.Space),
@@ -145,7 +144,7 @@ def test_debug():
     ),
 )
 def test_pattern_expected_tokens(pattern, expected):
-    assert dumbconf._pattern_expected_tokens(pattern) == expected
+    assert _tre._pattern_expected_tokens(pattern) == expected
 
 
 @pytest.mark.parametrize(

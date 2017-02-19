@@ -1,3 +1,4 @@
+from setuptools import find_packages
 from setuptools import setup
 
 setup(
@@ -16,5 +17,5 @@ setup(
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',
     ],
-    py_modules=['dumbconf'],
+    packages=find_packages(exclude=('tests*', 'testing*')),
 )

@@ -34,10 +34,10 @@ def _parse_json_start(tokens, offset, ast_start):
 def _parse_json_items(tokens, offset, endtoken, parse_item):
     items = []
     while True:
-        if isinstance(tokens[offset], endtoken):
+        if matches_pattern(tokens, offset, endtoken):
             break
         val, offset = parse_item(tokens, offset, head=())
-        if not isinstance(tokens[offset], endtoken):
+        if not matches_pattern(tokens, offset, endtoken):
             comma_space, offset = get_pattern(tokens, offset, PT_COMMA_SPACE)
             val = val._replace(tail=val.tail + comma_space)
         items.append(val)
@@ -52,7 +52,7 @@ def _parse_json_items_multiline(tokens, offset, endtoken, parse_item):
         # It's possible that there's comments / newlines after the last
         # item.  In that case, we augment the tail of the previous item.
         # If there are no items, this augments the head of the list itself.
-        if isinstance(tokens[offset], endtoken):
+        if matches_pattern(tokens, offset, endtoken):
             if items:
                 items[-1] = items[-1]._replace(tail=items[-1].tail + head)
             else:
@@ -142,7 +142,7 @@ def unparse(ast_obj):
         elif type(attr) is tuple:
             for el in attr:
                 src += unparse(el)
-        elif isinstance(attr, tuple):
+        elif isinstance(attr, ast.AST):
             src += unparse(attr)
     return src
 
@@ -177,7 +177,7 @@ def debug(ast_obj, _indent=0):
                                 indentstr(), debug(el, state.indent),
                             )
                     representation += indentstr() + ')'
-                elif isinstance(attr, tuple):
+                elif isinstance(attr, ast.AST):
                     representation = debug(attr, state.indent)
                 else:
                     raise AssertionError('unreachable!')

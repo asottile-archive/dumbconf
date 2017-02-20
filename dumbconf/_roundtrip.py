@@ -20,7 +20,7 @@ else:  # pragma: no cover (PY3)
 
 
 def _python_value(ast_obj):
-    if isinstance(ast_obj, ast.Primitive):
+    if isinstance(ast_obj, ast.PRIMITIVE):
         return ast_obj.val
     elif isinstance(ast_obj, ast.List):
         return [_python_value(item.val) for item in ast_obj.items]

@@ -1,7 +1,12 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+import collections
+
+import pytest
+
 from dumbconf._roundtrip import dumps_roundtrip
+from dumbconf._roundtrip import loads
 from dumbconf._roundtrip import loads_roundtrip
 
 
@@ -174,3 +179,43 @@ def test_delete_fixup_indent():
         '    False,\n'
         ']'
     )
+
+
+def test_nested_python_value():
+    val = loads_roundtrip(
+        '{\n'
+        '    True: {\n'
+        '        False: False,\n'
+        '        True: True,\n'
+        '    },\n'
+        '}'
+    )
+    assert val[True][False].python_value() is False
+    assert val[True][True].python_value() is True
+
+
+@pytest.mark.parametrize(
+    ('s', 'expected'),
+    (
+        ('True', True),
+        ('False', False),
+        ('None', None),
+        ("'ohai'", 'ohai'),
+        ('5', 5),
+        ('5.', 5.),
+    ),
+)
+def test_loads_simple(s, expected):
+    assert loads(s) == expected
+
+
+def test_loads_list():
+    src = '[True, False, "string"]'
+    assert loads(src) == [True, False, 'string']
+
+
+def test_loads_map():
+    src = "{a: 'a_value', b: 'b_value', c: 'c_value'}"
+    ret = loads(src)
+    assert isinstance(ret, collections.OrderedDict)
+    assert ret == {'a': 'a_value', 'b': 'b_value', 'c': 'c_value'}

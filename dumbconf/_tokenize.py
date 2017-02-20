@@ -40,11 +40,11 @@ STRING_RE = re.compile(_or(
     r"'[^\n'\\]*(?:\\.[^\n'\\]*)*'", r'"[^\n"\\]*(?:\\.[^\n"\\]*)*"',
 ))
 BARE_WORD_RE = re.compile(
-    '[A-Za-z_][A-Za-z0-9_-]*?' +
-    # But not our true / null tokens
-    _nor(*BOOL_TOKENS) + _nor(*NULL_TOKENS) +
+    '[A-Za-z_][A-Za-z0-9_-]*' +
     # Followed by some non-identifier
-    '(?![A-Za-z0-9_-])',
+    '(?![A-Za-z0-9_-])' +
+    # But not our true / null tokens
+    _nor(*BOOL_TOKENS) + _nor(*NULL_TOKENS),
 )
 
 LIST_START_RE = re.compile(r'\[')

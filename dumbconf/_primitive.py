@@ -20,11 +20,13 @@ class Null(object):
     dump = staticmethod(repr)
 
 
-class Int(object):
-    @staticmethod
-    def parse(s):
-        return ast.literal_eval(s)
+class Float(object):
+    parse = staticmethod(ast.literal_eval)
+    dump = staticmethod(repr)
 
+
+class Int(object):
+    parse = staticmethod(ast.literal_eval)
     dump = staticmethod(repr)
 
 

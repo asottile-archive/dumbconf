@@ -11,7 +11,11 @@ def _to_python_value(ast_obj):
     if isinstance(ast_obj, ast.Doc):
         return _to_python_value(ast_obj.val)
     elif isinstance(
-            ast_obj, (ast.BareWordKey, ast.Bool, ast.Null, ast.String),
+            ast_obj,
+            (
+                ast.BareWordKey, ast.Bool, ast.Int, ast.Float, ast.Null,
+                ast.String,
+            ),
     ):
         return ast_obj.val
     elif isinstance(ast_obj, ast.List):

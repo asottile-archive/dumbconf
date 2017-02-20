@@ -1,5 +1,4 @@
 import dumbconf._error
-import dumbconf._load_dump
 import dumbconf._roundtrip
 import dumbconf._tokenize
 import dumbconf.ast
@@ -14,7 +13,7 @@ debug = dumbconf._parse.debug
 parse = dumbconf._parse.parse
 unparse = dumbconf._parse.unparse
 
-loads = dumbconf._load_dump.loads
+loads = dumbconf._roundtrip.loads
 
 loads_roundtrip = dumbconf._roundtrip.loads_roundtrip
 dumps_roundtrip = dumbconf._roundtrip.dumps_roundtrip

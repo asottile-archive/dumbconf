@@ -31,6 +31,7 @@ Int = _ast_cls('Int', ('val', 'src'))
 Float = _ast_cls('Float', ('val', 'src'))
 String = _ast_cls('String', ('val', 'src'))
 BareWordKey = _ast_cls('BareWordKey', ('val', 'src'))
+Primitive = (Bool, Null, Int, Float, String, BareWordKey)
 
 Colon = _ast_cls('Colon', ('src',))
 Comma = _ast_cls('Comma', ('src',))

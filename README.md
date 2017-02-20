@@ -63,8 +63,18 @@ true
 false
 ```
 
-### Numbers
-- Not planned for v1
+### Integers
+
+There are four supported forms of integers:
+
+- Hexadecimal: `0xdeadBEEF`
+- Binary: `0b01010101`
+- Octal: `0o755`
+- Decimal: `1234`
+
+## Floats
+
+TODO
 
 ### null
 - There are 4 tokens interpreted as null
@@ -155,6 +165,7 @@ nil
         false_values: [false, False FALSE],
         none_values: [None, nil, NULL, null],
         strings: ["double quoted", 'single quoted', 'unicode: \u2603'],
+        ints: [0xDEADBEEF, 0b101010, 0o755, 0, 1234],
     },
 
     'a json style map': {"key": "value", "other key": "other value"},

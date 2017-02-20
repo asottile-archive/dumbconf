@@ -26,6 +26,13 @@ def test_replace_string():
     assert ret == "'ohai'  # comment"
 
 
+def test_replace_int():
+    val = loads_roundtrip('True  # comment')
+    val.replace_value(5)
+    ret = dumps_roundtrip(val)
+    assert ret == '5  # comment'
+
+
 def test_replace_map_value_top_level():
     val = loads_roundtrip(
         '{\n'

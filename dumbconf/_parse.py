@@ -18,7 +18,7 @@ PT_REST_OF_LINE = Or(ast.NL, Pattern(Star(ast.Space), ast.Comment))
 PT_HEAD = Star(Or(ast.Indent, ast.NL, ast.Comment))
 PT_COLON_SPACE = Pattern(ast.Colon, ast.Space)
 PT_COMMA_SPACE = Pattern(ast.Comma, ast.Space)
-PT_VALUE_TOKENS = Or(ast.String, ast.Bool, ast.Null)
+PT_VALUE_TOKENS = Or(ast.Bool, ast.Null, ast.Int, ast.String)
 PT_KEY = Or(PT_VALUE_TOKENS, ast.BareWordKey)
 
 

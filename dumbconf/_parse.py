@@ -60,7 +60,11 @@ def _parse_json_items_multiline(tokens, offset, endtoken, parse_item):
             break
         val, offset = parse_item(tokens, offset, head=head)
         comma, offset = get_pattern(tokens, offset, ast.Comma)
-        rest, offset = get_pattern(tokens, offset, PT_REST_OF_LINE)
+        # Allow multiple items to be on a single line
+        if matches_pattern(tokens, offset, PT_REST_OF_LINE):
+            rest, offset = get_pattern(tokens, offset, PT_REST_OF_LINE)
+        else:
+            rest, offset = get_pattern(tokens, offset, ast.Space)
         val = val._replace(tail=val.tail + comma + rest)
         items.append(val)
     return tuple(items), more_head, offset

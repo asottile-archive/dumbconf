@@ -56,31 +56,46 @@ def _replace_index(obj, new_value, index_chain):
         key, rest = index_chain[0], index_chain[1:]
         i = _key_index(obj.val, key)
 
-        new_items = (_replace_index(obj.val.items[i], new_value, rest),)
-        new_items = obj.val.items[:i] + new_items + obj.val.items[i + 1:]
-        return obj._replace(val=obj.val._replace(items=new_items))
+        new_items = list(obj.val.items)
+        new_items[i] = _replace_index(obj.val.items[i], new_value, rest)
+        return obj._replace(val=obj.val._replace(items=tuple(new_items)))
 
 
 def _delete_index(obj, index_chain):
     key, rest = index_chain[0], index_chain[1:]
     i = _key_index(obj.val, key)
 
+    orig_item = obj.val.items[i]
+    new_items = list(obj.val.items)
+
     if not rest:
-        new_items = ()
+        del new_items[i]
+
+        # If we're deleting the last item of an inline container, we need to
+        # remove the comma from the new last item
+        if not obj.val.is_multiline and len(obj.val.items) == i + 1:
+            new_items[-1] = new_items[-1]._replace(tail=())
+        # If we're deleting an element of a non-inline container we may need
+        # to adjust the item before (to change ', ' to ',\n')
+        elif (
+                obj.val.is_multiline and
+                i - 1 >= 0 and
+                orig_item.head == () and
+                orig_item.tail[-1].src.endswith('\n')
+        ):
+            new_items[i - 1] = new_items[i - 1]._replace(tail=orig_item.tail)
+        # If we're deleting an element of a non-inlienc container we may need
+        # to adjust the item after (to change head to an indent)
+        elif (
+                obj.val.is_multiline and
+                i + 1 < len(obj.val.items) and
+                orig_item.head != () and
+                not orig_item.tail[-1].src.endswith('\n')
+        ):
+            new_items[i] = new_items[i]._replace(head=orig_item.head)
     else:
-        new_items = (_delete_index(obj.val.items[i], rest),)
-    new_items = obj.val.items[:i] + new_items + obj.val.items[i + 1:]
-    # If we're deleting the last item of an inline syntax, we need to remove
-    # the comma from the new last item
-    if (
-            not rest and
-            i + 1 == len(obj.val.items) and
-            len(obj.val.head) == 1
-    ):
-        last_item = new_items[-1]
-        last_item = last_item._replace(tail=last_item.tail[:-2])
-        new_items = new_items[:-1] + (last_item,)
-    return obj._replace(val=obj.val._replace(items=new_items))
+        new_items[i] = _delete_index(orig_item, rest)
+    return obj._replace(val=obj.val._replace(items=tuple(new_items)))
 
 
 class AstProxyChain(object):

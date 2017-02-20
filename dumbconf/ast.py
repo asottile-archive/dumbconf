@@ -7,14 +7,20 @@ import collections
 _ast_cls = collections.namedtuple
 
 
+def is_multiline(self):
+    return len(self.head) > 1
+
+
 Doc = _ast_cls('Doc', ('head', 'val', 'tail'))
 
 List = _ast_cls('List', ('head', 'items', 'tail'))
+List.is_multiline = property(is_multiline)
 ListStart = _ast_cls('ListStart', ('src',))
 ListEnd = _ast_cls('ListEnd', ('src',))
 ListItem = _ast_cls('ListItem', ('head', 'val', 'tail'))
 
 Map = _ast_cls('Map', ('head', 'items', 'tail'))
+Map.is_multiline = property(is_multiline)
 MapStart = _ast_cls('MapStart', ('src',))
 MapEnd = _ast_cls('MapEnd', ('src',))
 MapItem = _ast_cls('MapItem', ('head', 'key', 'inner', 'val', 'tail'))

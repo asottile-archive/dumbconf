@@ -130,3 +130,33 @@ def test_delete_nested_fixup_trailing_comma_inline():
     del val['a']['b']['d']
     ret = dumps_roundtrip(val)
     assert ret == '{a: {b: {c: True}}}'
+
+
+def test_delete_fixup_trailing_space_multiline():
+    val = loads_roundtrip(
+        '[\n'
+        '    True, False,\n'
+        ']'
+    )
+    del val[1]
+    ret = dumps_roundtrip(val)
+    assert ret == (
+        '[\n'
+        '    True,\n'
+        ']'
+    )
+
+
+def test_delete_fixup_indent():
+    val = loads_roundtrip(
+        '[\n'
+        '    True, False,\n'
+        ']'
+    )
+    del val[0]
+    ret = dumps_roundtrip(val)
+    assert ret == (
+        '[\n'
+        '    False,\n'
+        ']'
+    )

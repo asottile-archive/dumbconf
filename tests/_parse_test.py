@@ -98,6 +98,7 @@ def test_json_trivial_list():
         tail=(),
     )
     assert ret == expected
+    assert not ret.val.is_multiline
 
 
 def test_json_list_one_value_inline():
@@ -167,6 +168,7 @@ def test_json_list_multiline_trivial():
         tail=(),
     )
     assert ret == expected
+    assert ret.val.is_multiline
 
 
 def test_json_list_multiline_comments():
@@ -255,7 +257,7 @@ def test_json_list_multiline_comment_after():
             head=(ast.ListStart('['), ast.NL('\n')),
             items=(
                 ast.ListItem(
-                    head=(ast.NL('    '),),
+                    head=(ast.Indent('    '),),
                     val=ast.Bool(val=True, src='True'),
                     tail=(
                         ast.Comma(','), ast.NL('\n'),
@@ -283,13 +285,53 @@ def test_json_list_multiple_items_multiline():
             head=(ast.ListStart('['), ast.NL('\n')),
             items=(
                 ast.ListItem(
-                    head=(ast.NL('    '),),
+                    head=(ast.Indent('    '),),
                     val=ast.Bool(val=True, src='True'),
                     tail=(ast.Comma(','), ast.NL('\n')),
                 ),
                 ast.ListItem(
-                    head=(ast.NL('    '),),
+                    head=(ast.Indent('    '),),
                     val=ast.Bool(val=False, src='False'),
+                    tail=(ast.Comma(','), ast.NL('\n')),
+                ),
+            ),
+            tail=(ast.ListEnd(']'),),
+        ),
+        tail=(),
+    )
+    assert ret == expected
+
+
+def test_json_list_multiline_multiple_items_on_one_line():
+    ret = parse(
+        '[\n'
+        '    True, False,\n'
+        '    False, True,\n'
+        ']'
+    )
+    expected = ast.Doc(
+        head=(),
+        val=ast.List(
+            head=(ast.ListStart('['), ast.NL('\n')),
+            items=(
+                ast.ListItem(
+                    head=(ast.Indent('    '),),
+                    val=ast.Bool(val=True, src='True'),
+                    tail=(ast.Comma(','), ast.Space(' ')),
+                ),
+                ast.ListItem(
+                    head=(),
+                    val=ast.Bool(val=False, src='False'),
+                    tail=(ast.Comma(','), ast.NL('\n')),
+                ),
+                ast.ListItem(
+                    head=(ast.Indent('    '),),
+                    val=ast.Bool(val=False, src='False'),
+                    tail=(ast.Comma(','), ast.Space(' ')),
+                ),
+                ast.ListItem(
+                    head=(),
+                    val=ast.Bool(val=True, src='True'),
                     tail=(ast.Comma(','), ast.NL('\n')),
                 ),
             ),
@@ -312,6 +354,7 @@ def test_json_map_trivial():
         tail=(),
     )
     assert ret == expected
+    assert not ret.val.is_multiline
 
 
 def test_json_map_one_element_inline():
@@ -377,6 +420,7 @@ def test_json_map_multiline_trivial():
         tail=(),
     )
     assert ret == expected
+    assert ret.val.is_multiline
 
 
 def test_json_map_multiline_one_element():

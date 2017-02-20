@@ -76,6 +76,7 @@ def test_parse_null(s):
         ('0o755', 0o755),
         ('1234', 1234),
         ('0', 0),
+        ('-5', -5),
     ),
 )
 def test_parse_integer(s, expected_val):

@@ -21,7 +21,7 @@ SPACE_RE = re.compile('(?<!\n) ')
 
 BOOL_RE = re.compile(_or('TRUE', 'True', 'true', 'FALSE', 'False', 'false'))
 NULL_RE = re.compile(_or('NULL', 'null', 'None', 'nil'))
-INT_RE = re.compile(_or(
+INT_RE = re.compile('-?' + _or(
     '0x[0-9a-fA-F]+', '0b[0-1]+', '0o[0-7]+', '0', '[1-9][0-9]*',
 ))
 STRING_RE = re.compile(_or(

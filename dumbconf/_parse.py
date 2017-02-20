@@ -22,7 +22,7 @@ PT_VALUE_TOKENS = Or(ast.Bool, ast.Null, ast.Float, ast.Int, ast.String)
 PT_KEY = Or(PT_VALUE_TOKENS, ast.BareWordKey)
 
 
-def _parse_json_start(tokens, offset, ast_start):
+def _parse_start(tokens, offset, ast_start):
     ret, offset = get_pattern(tokens, offset, ast_start)
     match = matches_pattern(tokens, offset, PT_REST_OF_LINE)
     if match:
@@ -31,11 +31,9 @@ def _parse_json_start(tokens, offset, ast_start):
     return ret, offset, bool(match)
 
 
-def _parse_json_items(tokens, offset, endtoken, parse_item):
+def _parse_items(tokens, offset, endtoken, parse_item):
     items = []
-    while True:
-        if matches_pattern(tokens, offset, endtoken):
-            break
+    while not matches_pattern(tokens, offset, endtoken):
         val, offset = parse_item(tokens, offset, head=())
         if not matches_pattern(tokens, offset, endtoken):
             comma_space, offset = get_pattern(tokens, offset, PT_COMMA_SPACE)
@@ -44,7 +42,7 @@ def _parse_json_items(tokens, offset, endtoken, parse_item):
     return tuple(items), (), offset
 
 
-def _parse_json_items_multiline(tokens, offset, endtoken, parse_item):
+def _parse_items_multiline(tokens, offset, endtoken, parse_item):
     more_head = ()
     items = []
     while True:
@@ -71,36 +69,36 @@ def _parse_json_items_multiline(tokens, offset, endtoken, parse_item):
 
 
 def _parse_json(tokens, offset, cls, starttoken, endtoken, parse_item):
-    head, offset, multiline = _parse_json_start(tokens, offset, starttoken)
-    func = _parse_json_items_multiline if multiline else _parse_json_items
+    head, offset, multiline = _parse_start(tokens, offset, starttoken)
+    func = _parse_items_multiline if multiline else _parse_items
     items, more_head, offset = func(tokens, offset, endtoken, parse_item)
     tail, offset = get_pattern(tokens, offset, endtoken)
     return cls(head + more_head, items, tail), offset
 
 
-def _parse_json_list_item(tokens, offset, head):
+def _parse_list_item(tokens, offset, head):
     val, offset = _parse_val(tokens, offset)
     return ast.ListItem(head, val, ()), offset
 
 
-_parse_json_list = functools.partial(
+_parse_list = functools.partial(
     _parse_json,
     cls=ast.List, starttoken=ast.ListStart, endtoken=ast.ListEnd,
-    parse_item=_parse_json_list_item,
+    parse_item=_parse_list_item,
 )
 
 
-def _parse_json_map_item(tokens, offset, head):
+def _parse_map_item(tokens, offset, head):
     key, offset = get_pattern(tokens, offset, PT_KEY, single=True)
     colon_space, offset = get_pattern(tokens, offset, PT_COLON_SPACE)
     val, offset = _parse_val(tokens, offset)
     return ast.MapItem(head, key, colon_space, val, ()), offset
 
 
-_parse_json_map = functools.partial(
+_parse_map = functools.partial(
     _parse_json,
     cls=ast.Map, starttoken=ast.MapStart, endtoken=ast.MapEnd,
-    parse_item=_parse_json_map_item,
+    parse_item=_parse_map_item,
 )
 
 
@@ -108,9 +106,9 @@ def _parse_val(tokens, offset):
     if matches_pattern(tokens, offset, PT_VALUE_TOKENS):
         return get_pattern(tokens, offset, PT_VALUE_TOKENS, single=True)
     elif matches_pattern(tokens, offset, ast.ListStart):
-        return _parse_json_list(tokens, offset)
+        return _parse_list(tokens, offset)
     elif matches_pattern(tokens, offset, ast.MapStart):
-        return _parse_json_map(tokens, offset)
+        return _parse_map(tokens, offset)
     else:
         missing_pattern = Or(PT_VALUE_TOKENS, ast.ListStart, ast.MapStart)
         pattern_expected(tokens, offset, missing_pattern)

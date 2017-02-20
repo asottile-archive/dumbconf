@@ -110,7 +110,6 @@ nil
 ]
 ```
 
-
 - Closing bracket matches starting indentation
 - For instance in a mapping type:
 ```yaml
@@ -121,6 +120,17 @@ nil
         ATOM,
     ]
 }
+```
+
+### Hybrid multiline bracketed list
+
+- Values may appear inline (to improve readability)
+
+```yaml
+[
+    ATOM, ATOM, ATOM,
+    ATOM, ATOM, ATOM,
+]
 ```
 
 ## Bracketed maps
@@ -154,6 +164,17 @@ nil
         ATOM: ATOM,
         ATOM: ATOM,
     }
+}
+```
+
+### Hybrid multiline bracketed map
+
+- Pairs may appear inline (to improve readability)
+
+```yaml
+{
+    ATOM: ATOM, ATOM: ATOM,
+    ATOM: ATOM, ATOM: ATOM,
 }
 ```
 

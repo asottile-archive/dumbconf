@@ -125,7 +125,7 @@ There are four supported forms of integers:
         'value',
         'value',
         'value',
-    ]
+    ],
 }
 ```
 
@@ -176,7 +176,7 @@ There are four supported forms of integers:
         key1: 'value1',
         key2: 'value2',
         key3: 'value3',
-    }
+    },
 }
 ```
 

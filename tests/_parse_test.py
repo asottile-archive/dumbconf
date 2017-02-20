@@ -120,7 +120,7 @@ def test_parse_quoted_string(quote, s, expected_val):
     assert parse(s) == expected
 
 
-def test_json_trivial_list():
+def test_trivial_list():
     ret = parse('[]')
     expected = ast.Doc(
         head=(),
@@ -135,7 +135,7 @@ def test_json_trivial_list():
     assert not ret.val.is_multiline
 
 
-def test_json_list_one_value_inline():
+def test_list_one_value_inline():
     ret = parse('[True]')
     expected = ast.Doc(
         head=(),
@@ -153,7 +153,7 @@ def test_json_list_one_value_inline():
     assert ret == expected
 
 
-def test_json_list_several_values_inline():
+def test_list_several_values_inline():
     ret = parse('[True, False]')
     expected = ast.Doc(
         head=(),
@@ -190,7 +190,7 @@ def test_regression_inline_list_missing_comma():
     )
 
 
-def test_json_list_multiline_trivial():
+def test_list_multiline_trivial():
     ret = parse('[\n]')
     expected = ast.Doc(
         head=(),
@@ -205,7 +205,7 @@ def test_json_list_multiline_trivial():
     assert ret.val.is_multiline
 
 
-def test_json_list_multiline_comments():
+def test_list_multiline_comments():
     ret = parse(
         '[\n'
         '    # Comment\n'
@@ -226,7 +226,7 @@ def test_json_list_multiline_comments():
     assert ret == expected
 
 
-def test_json_list_multiline():
+def test_list_multiline():
     ret = parse(
         '[\n'
         '    True,\n'
@@ -250,7 +250,7 @@ def test_json_list_multiline():
     assert ret == expected
 
 
-def test_json_list_multiline_comment_before():
+def test_list_multiline_comment_before():
     ret = parse(
         '[\n'
         '    # Hello\n'
@@ -278,7 +278,7 @@ def test_json_list_multiline_comment_before():
     assert ret == expected
 
 
-def test_json_list_multiline_comment_after():
+def test_list_multiline_comment_after():
     ret = parse(
         '[\n'
         '    True,\n'
@@ -306,7 +306,7 @@ def test_json_list_multiline_comment_after():
     assert ret == expected
 
 
-def test_json_list_multiple_items_multiline():
+def test_list_multiple_items_multiline():
     ret = parse(
         '[\n'
         '    True,\n'
@@ -336,7 +336,7 @@ def test_json_list_multiple_items_multiline():
     assert ret == expected
 
 
-def test_json_list_multiline_multiple_items_on_one_line():
+def test_list_multiline_multiple_items_on_one_line():
     ret = parse(
         '[\n'
         '    True, False,\n'
@@ -376,7 +376,7 @@ def test_json_list_multiline_multiple_items_on_one_line():
     assert ret == expected
 
 
-def test_json_map_trivial():
+def test_map_trivial():
     ret = parse('{}')
     expected = ast.Doc(
         head=(),
@@ -391,7 +391,7 @@ def test_json_map_trivial():
     assert not ret.val.is_multiline
 
 
-def test_json_map_one_element_inline():
+def test_map_one_element_inline():
     ret = parse('{True: False}')
     expected = ast.Doc(
         head=(),
@@ -413,7 +413,7 @@ def test_json_map_one_element_inline():
     assert ret == expected
 
 
-def test_json_map_multiple_elements_inline():
+def test_map_multiple_elements_inline():
     ret = parse('{True: False, False: True}')
     expected = ast.Doc(
         head=(),
@@ -442,7 +442,7 @@ def test_json_map_multiple_elements_inline():
     assert ret == expected
 
 
-def test_json_map_multiline_trivial():
+def test_map_multiline_trivial():
     ret = parse('{\n}')
     expected = ast.Doc(
         head=(),
@@ -457,7 +457,7 @@ def test_json_map_multiline_trivial():
     assert ret.val.is_multiline
 
 
-def test_json_map_multiline_one_element():
+def test_map_multiline_one_element():
     ret = parse(
         '{\n'
         '    True: False,\n'

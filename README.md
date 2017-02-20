@@ -185,7 +185,7 @@ nil
 {
     scalars: {
         true_values: [true, True, TRUE],  # An inline comment
-        false_values: [false, False FALSE],
+        false_values: [false, False, FALSE],
         none_values: [None, nil, NULL, null],
         strings: ["double quoted", 'single quoted', 'unicode: \u2603'],
         ints: [0xDEADBEEF, 0b101010, 0o755, 0, 1234],

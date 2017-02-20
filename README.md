@@ -88,9 +88,9 @@ nil
 ```
 
 
-## Bracketed lists
+## Lists
 
-### Inline bracketed list
+### Inline list
 
 ```yaml
 []
@@ -98,7 +98,7 @@ nil
 [ATOM, ATOM, ATOM]
 ```
 
-### Multiline bracketed list
+### Multiline list
 
 - Trailing commas are *required*
 
@@ -122,7 +122,7 @@ nil
 }
 ```
 
-### Hybrid multiline bracketed list
+### Hybrid multiline list
 
 - Values may appear inline (to improve readability)
 
@@ -133,9 +133,9 @@ nil
 ]
 ```
 
-## Bracketed maps
+## Maps
 
-### Inline bracketed map
+### Inline map
 
 ```yaml
 {}
@@ -143,7 +143,7 @@ nil
 {ATOM: ATOM, ATOM: ATOM}
 ```
 
-### Multiline bracketed map
+### Multiline map
 
 - Trailing commas are *required*
 
@@ -167,7 +167,7 @@ nil
 }
 ```
 
-### Hybrid multiline bracketed map
+### Hybrid multiline map
 
 - Pairs may appear inline (to improve readability)
 

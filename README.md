@@ -1,3 +1,6 @@
+[![Build Status](https://travis-ci.org/asottile/dumbconf.svg?branch=master)](https://travis-ci.org/asottile/dumbconf)
+[![Coverage Status](https://coveralls.io/repos/github/asottile/dumbconf/badge.svg?branch=master)](https://coveralls.io/github/asottile/dumbconf?branch=master)
+
 # dumbconf - A WIP spec
 
 Goal: define a "simple" configuration language (yet another) which is easy to

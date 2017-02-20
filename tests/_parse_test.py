@@ -30,21 +30,21 @@ def test_debug():
         '    head=(),\n'
         '    val=List(\n'
         '        head=(\n'
-        "            ListStart(src='['),\n"
+        "            ListStart(src={!r}),\n"
         '        ),\n'
         '        items=(\n'
         '            ListItem(\n'
         '                head=(),\n'
-        "                val=Bool(val=True, src='True'),\n"
+        "                val=Bool(val=True, src={!r}),\n"
         '                tail=(),\n'
         '            ),\n'
         '        ),\n'
         '        tail=(\n'
-        "            ListEnd(src=']'),\n"
+        "            ListEnd(src={!r}),\n"
         '        ),\n'
         '    ),\n'
         '    tail=(),\n'
-        ')'
+        ')'.format('[', 'True', ']')
     )
 
 

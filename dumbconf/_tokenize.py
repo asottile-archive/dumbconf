@@ -12,6 +12,10 @@ def _or(*args):
     return '({})'.format('|'.join(args))
 
 
+def _nor(*args):
+    return ''.join('(?<!{})'.format(arg) for arg in args)
+
+
 COLON_RE = re.compile(':')
 COMMA_RE = re.compile(',')
 COMMENT_RE = re.compile('# .*(\n|$)')
@@ -19,8 +23,10 @@ INDENT_RE = re.compile('(?<=\n)(    )+')
 NL_RE = re.compile('\n')
 SPACE_RE = re.compile('(?<!\n) ')
 
-BOOL_RE = re.compile(_or('TRUE', 'True', 'true', 'FALSE', 'False', 'false'))
-NULL_RE = re.compile(_or('NULL', 'null', 'None', 'nil'))
+BOOL_TOKENS = ('TRUE', 'True', 'true', 'FALSE', 'False', 'false')
+BOOL_RE = re.compile(_or(*BOOL_TOKENS))
+NULL_TOKENS = ('NULL', 'null', 'None', 'nil')
+NULL_RE = re.compile(_or(*NULL_TOKENS))
 _exp = '([eE][-+]?[0-9]+)'
 FLOAT_RE = re.compile('-?' + _or(
     '[0-9]+' + _exp,
@@ -33,8 +39,13 @@ INT_RE = re.compile('-?' + _or(
 STRING_RE = re.compile(_or(
     r"'[^\n'\\]*(?:\\.[^\n'\\]*)*'", r'"[^\n"\\]*(?:\\.[^\n"\\]*)*"',
 ))
-BARE_WORD_RE = re.compile('[A-Za-z_][a-zA-Z0-9_-]*')
-
+BARE_WORD_RE = re.compile(
+    '[A-Za-z_][A-Za-z0-9_-]*?' +
+    # But not our true / null tokens
+    _nor(*BOOL_TOKENS) + _nor(*NULL_TOKENS) +
+    # Followed by some non-identifier
+    '(?![A-Za-z0-9_-])',
+)
 
 LIST_START_RE = re.compile(r'\[')
 LIST_END_RE = re.compile(']')
@@ -55,6 +66,7 @@ def _reg_parse_val(reg, cls, to_val_func, src, offset):
 
 
 tokenize_processors = (
+    (BARE_WORD_RE, _reg_parse_val, ast.BareWordKey, _primitive.BareWord.parse),
     (BOOL_RE, _reg_parse_val, ast.Bool, _primitive.Bool.parse),
     (NULL_RE, _reg_parse_val, ast.Null, _primitive.Null.parse),
     (FLOAT_RE, _reg_parse_val, ast.Float, _primitive.Float.parse),
@@ -70,8 +82,6 @@ tokenize_processors = (
     (INDENT_RE, _reg_parse, ast.Indent),
     (NL_RE, _reg_parse, ast.NL),
     (SPACE_RE, _reg_parse, ast.Space),
-    # Lowest priority token
-    (BARE_WORD_RE, _reg_parse_val, ast.BareWordKey, _primitive.BareWord.parse),
 )
 
 

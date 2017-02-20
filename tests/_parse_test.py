@@ -68,6 +68,22 @@ def test_parse_null(s):
     assert parse(s) == expected
 
 
+@pytest.mark.parametrize(
+    ('s', 'expected_val'),
+    (
+        ('0x15', 0x15),
+        ('0b101', 0b101),
+        ('0o755', 0o755),
+        ('1234', 1234),
+        ('0', 0),
+    ),
+)
+def test_parse_integer(s, expected_val):
+    ret = parse(s)
+    expected = ast.Doc(head=(), val=ast.Int(expected_val, src=s), tail=())
+    assert ret == expected
+
+
 @pytest.mark.parametrize('quote', ("'", '"'))
 @pytest.mark.parametrize(
     ('s', 'expected_val'),
@@ -563,7 +579,7 @@ def test_file_ending_in_several_comments():
 def test_parse_error_no_contents():
     _assert_parse_error(
         '',
-        'Expected one of (Bool, ListStart, MapStart, Null, String) '
+        'Expected one of (Bool, Int, ListStart, MapStart, Null, String) '
         'but received EOF',
     )
 

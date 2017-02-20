@@ -26,7 +26,8 @@ MapEnd = _ast_cls('MapEnd', ('src',))
 MapItem = _ast_cls('MapItem', ('head', 'key', 'inner', 'val', 'tail'))
 
 Bool = _ast_cls('Bool', ('val', 'src'))
-Null = _ast_cls('Null', ('val', 'src',))
+Null = _ast_cls('Null', ('val', 'src'))
+Int = _ast_cls('Int', ('val', 'src'))
 String = _ast_cls('String', ('val', 'src'))
 BareWordKey = _ast_cls('BareWordKey', ('val', 'src'))
 

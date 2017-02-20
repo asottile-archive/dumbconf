@@ -10,8 +10,10 @@ from dumbconf._parse import unparse
 # TODO: replace with six?
 if str is bytes:  # pragma: no cover (PY2)
     text_type = unicode  # noqa
+    int_types = (int, long)  # noqa
 else:  # pragma: no cover (PY3)
     text_type = str
+    int_types = (int,)
 
 
 def _merge_primitive(ast_obj, new_value):
@@ -24,6 +26,9 @@ def _merge_primitive(ast_obj, new_value):
     elif new_value is None:
         new_cls = ast.Null
         to_src = _primitive.Null.dump
+    elif isinstance(new_value, int_types):
+        new_cls = ast.Int
+        to_src = _primitive.Int.dump
     else:
         raise AssertionError('Unexpected value {!r}'.format(new_value))
     attrs = ast_obj._asdict()

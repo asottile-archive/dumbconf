@@ -68,7 +68,7 @@ def _parse_items_multiline(tokens, offset, endtoken, parse_item):
     return tuple(items), more_head, offset
 
 
-def _parse_json(tokens, offset, cls, starttoken, endtoken, parse_item):
+def _parse_container(tokens, offset, cls, starttoken, endtoken, parse_item):
     head, offset, multiline = _parse_start(tokens, offset, starttoken)
     func = _parse_items_multiline if multiline else _parse_items
     items, more_head, offset = func(tokens, offset, endtoken, parse_item)
@@ -82,7 +82,7 @@ def _parse_list_item(tokens, offset, head):
 
 
 _parse_list = functools.partial(
-    _parse_json,
+    _parse_container,
     cls=ast.List, starttoken=ast.ListStart, endtoken=ast.ListEnd,
     parse_item=_parse_list_item,
 )
@@ -96,7 +96,7 @@ def _parse_map_item(tokens, offset, head):
 
 
 _parse_map = functools.partial(
-    _parse_json,
+    _parse_container,
     cls=ast.Map, starttoken=ast.MapStart, endtoken=ast.MapEnd,
     parse_item=_parse_map_item,
 )

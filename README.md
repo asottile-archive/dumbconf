@@ -29,17 +29,14 @@ dumbconf files are invariantly UTF-8 encoded.
 true  # an inline comment
 ```
 
-## ATOM
+## Primitives
 
 ### Quoted strings
 - Both single and quoted strings are appropriate
 - Escape sequences in quoted strings will be interpreted according to python
   rules.
 ```yaml
-'foo'
-"foo"
-'foo\'bar'
-"foo\"bar"
+['foo', "foo", 'foo\'bar', "foo\"bar"]
 ```
 
 ### Bare word keys
@@ -55,38 +52,44 @@ true  # an inline comment
 ### Boolean
 - There are 6 tokens interpreted as booleans
 ```yaml
-TRUE
-FALSE
-True
-False
-true
-false
+[TRUE, FALSE, True, False, true, false]
 ```
 
 ### Integers
 
 There are four supported forms of integers:
 
-- Hexadecimal: `0xdeadBEEF`
-- Binary: `0b01010101`
-- Octal: `0o755`
-- Decimal: `1234`
+```yaml
+[
+    # hexadecimal
+    0xdeadBEEF,
+    # binary
+    0b10101010,
+    # octal
+    0o755,
+    # decimal
+    -1234,
+]
+```
 
-## Floats
+### Floats
 
-- Integers with exponents: `0e5`, `1e-10`
-- Numbers with a decimal point: `0.`, `.5`, `1.5`
-- Numbers with a decimal point and exponent: `6.02E23`
+```yaml
+[
+    # integers with exponents
+    0e5, 1e-10,
+    # numbers with a decimal point
+    0., .5, 1.5,
+    # numbers with a decimal point and exponent
+    6.02E23,
+]
+```
 
 ### null
 - There are 4 tokens interpreted as null
 ```yaml
-NULL
-null
-None
-nil
+[NULL, null, None, nil]
 ```
-
 
 ## Lists
 
@@ -94,8 +97,12 @@ nil
 
 ```yaml
 []
-[ATOM]
-[ATOM, ATOM, ATOM]
+```
+```yaml
+['value']
+```
+```yaml
+['value', 'value', 'value']
 ```
 
 ### Multiline list
@@ -104,9 +111,9 @@ nil
 
 ```yaml
 [
-    ATOM,
-    ATOM,
-    ATOM,
+    'value',
+    'value',
+    'value',
 ]
 ```
 
@@ -114,10 +121,10 @@ nil
 - For instance in a mapping type:
 ```yaml
 {
-    ATOM: [
-        ATOM,
-        ATOM,
-        ATOM,
+    key: [
+        'value',
+        'value',
+        'value',
     ]
 }
 ```
@@ -128,19 +135,25 @@ nil
 
 ```yaml
 [
-    ATOM, ATOM, ATOM,
-    ATOM, ATOM, ATOM,
+    'value', 'value', 'value',
+    'value', 'value',
 ]
 ```
 
 ## Maps
 
+- Keys may be any of the primitive types
+
 ### Inline map
 
 ```yaml
 {}
-{ATOM: ATOM}
-{ATOM: ATOM, ATOM: ATOM}
+```
+```yaml
+{key: 'value'}
+```
+```yaml
+{key: 'value', other_key: 'other value'}
 ```
 
 ### Multiline map
@@ -149,9 +162,9 @@ nil
 
 ```yaml
 {
-    ATOM: ATOM,
-    ATOM: ATOM,
-    ATOM: ATOM,
+    key1: 'value1',
+    key2: 'value2',
+    key3: 'value3',
 }
 ```
 
@@ -159,10 +172,10 @@ nil
 - For instance in a mapping type:
 ```yaml
 {
-    ATOM: {
-        ATOM: ATOM,
-        ATOM: ATOM,
-        ATOM: ATOM,
+    key: {
+        key1: 'value1',
+        key2: 'value2',
+        key3: 'value3',
     }
 }
 ```
@@ -173,8 +186,8 @@ nil
 
 ```yaml
 {
-    ATOM: ATOM, ATOM: ATOM,
-    ATOM: ATOM, ATOM: ATOM,
+    key1: 'value1', key2: 'value2',
+    key3: 'value3', key4: 'value4',
 }
 ```
 

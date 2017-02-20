@@ -29,6 +29,9 @@ def _merge_primitive(ast_obj, new_value):
     elif isinstance(new_value, int_types):
         new_cls = ast.Int
         to_src = _primitive.Int.dump
+    elif isinstance(new_value, float):
+        new_cls = ast.Float
+        to_src = _primitive.Float.dump
     else:
         raise AssertionError('Unexpected value {!r}'.format(new_value))
     attrs = ast_obj._asdict()

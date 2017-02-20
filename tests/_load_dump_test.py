@@ -15,6 +15,8 @@ from dumbconf._load_dump import loads
         ('False', False),
         ('None', None),
         ("'ohai'", 'ohai'),
+        ('5', 5),
+        ('5.', 5.),
     ),
 )
 def test_loads_simple(s, expected):

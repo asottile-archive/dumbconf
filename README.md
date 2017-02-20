@@ -74,7 +74,9 @@ There are four supported forms of integers:
 
 ## Floats
 
-TODO
+- Integers with exponents: `0e5`, `1e-10`
+- Numbers with a decimal point: `0.`, `.5`, `1.5`
+- Numbers with a decimal point and exponent: `6.02E23`
 
 ### null
 - There are 4 tokens interpreted as null
@@ -166,6 +168,7 @@ nil
         none_values: [None, nil, NULL, null],
         strings: ["double quoted", 'single quoted', 'unicode: \u2603'],
         ints: [0xDEADBEEF, 0b101010, 0o755, 0, 1234],
+        floats: [1., 1e5, .142857, 6.02e23],
     },
 
     'a json style map': {"key": "value", "other key": "other value"},

@@ -33,6 +33,13 @@ def test_replace_int():
     assert ret == '5  # comment'
 
 
+def test_replace_float():
+    val = loads_roundtrip('True  # comment')
+    val.replace_value(5.)
+    ret = dumps_roundtrip(val)
+    assert ret == '5.0  # comment'
+
+
 def test_replace_map_value_top_level():
     val = loads_roundtrip(
         '{\n'

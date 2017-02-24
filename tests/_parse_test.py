@@ -376,6 +376,42 @@ def test_list_multiline_multiple_items_on_one_line():
     assert ret == expected
 
 
+def test_nested_list():
+    ret = parse(
+        '[\n'
+        '    [\n'
+        '        1,\n'
+        '    ],\n'
+        ']'
+    )
+    expected = ast.Doc(
+        head=(),
+        val=ast.List(
+            head=(ast.ListStart('['), ast.NL('\n')),
+            items=(
+                ast.ListItem(
+                    head=(ast.Indent('    '),),
+                    val=ast.List(
+                        head=(ast.ListStart('['), ast.NL('\n')),
+                        items=(
+                            ast.ListItem(
+                                head=(ast.Indent('        '),),
+                                val=ast.Int(val=1, src='1'),
+                                tail=(ast.Comma(','), ast.NL('\n')),
+                            ),
+                        ),
+                        tail=(ast.Indent('    '), ast.ListEnd(']')),
+                    ),
+                    tail=(ast.Comma(','), ast.NL('\n'))
+                ),
+            ),
+            tail=(ast.ListEnd(']'),),
+        ),
+        tail=(),
+    )
+    assert ret == expected
+
+
 def test_map_trivial():
     ret = parse('{}')
     expected = ast.Doc(

@@ -7,6 +7,7 @@ import functools
 from dumbconf import _primitive
 from dumbconf import ast
 from dumbconf._parse import parse
+from dumbconf._parse import parse_from_tokens
 from dumbconf._parse import unparse
 
 
@@ -33,28 +34,81 @@ def _python_value(ast_obj):
         raise AssertionError('Unknown ast: {!r}'.format(ast_obj))
 
 
-def _merge_primitive(ast_obj, new_value):
-    if isinstance(new_value, text_type):
-        new_cls = ast.String
-        to_src = _primitive.String.dump
-    elif isinstance(new_value, bool):
-        new_cls = ast.Bool
-        to_src = _primitive.Bool.dump
-    elif new_value is None:
-        new_cls = ast.Null
-        to_src = _primitive.Null.dump
-    elif isinstance(new_value, int_types):
-        new_cls = ast.Int
-        to_src = _primitive.Int.dump
-    elif isinstance(new_value, float):
-        new_cls = ast.Float
-        to_src = _primitive.Float.dump
+def _to_tokens(val, indent=-1):
+    if isinstance(val, text_type):
+        return [ast.String(val=val, src=_primitive.String.dump(val))]
+    elif isinstance(val, bool):
+        return [ast.Bool(val=val, src=_primitive.Bool.dump(val))]
+    elif val is None:
+        return [ast.Null(val=None, src=_primitive.Null.dump(val))]
+    elif isinstance(val, int_types):
+        return [ast.Int(val=val, src=_primitive.Int.dump(val))]
+    elif isinstance(val, float):
+        return [ast.Float(val=val, src=_primitive.Float.dump(val))]
+    elif isinstance(val, dict):
+        return _map_tokens(val, indent)
+    elif isinstance(val, (tuple, list)):
+        return _list_tokens(val, indent)
     else:
-        raise AssertionError('Unexpected value {!r}'.format(new_value))
-    attrs = ast_obj._asdict()
-    attrs['val'] = new_value
-    attrs['src'] = to_src(new_value)
-    return new_cls(**attrs)
+        raise AssertionError('Unexpected value {!r}'.format(val))
+
+
+def _inline(val, start, end, item_func, to_iter):
+    ret = [start]
+    if val:
+        items = to_iter(val)
+        ret.extend(item_func(items[0]))
+        for item in items[1:]:
+            ret.extend((ast.Comma(','), ast.Space(' ')))
+            ret.extend(item_func(item))
+    ret.append(end)
+    return ret
+
+
+def _multiline(val, indent, start, end, item_func, to_iter):
+    ret = [start, ast.NL('\n')]
+    for item in to_iter(val):
+        ret.append(ast.Indent('    ' * (indent + 1)))
+        ret.extend(item_func(item, indent + 1))
+        ret.extend((ast.Comma(','), ast.NL('\n')))
+    if indent > 0:
+        ret.append(ast.Indent('    ' * indent))
+    ret.append(end)
+    return ret
+
+
+def _container(val, indent, **kwargs):
+    if indent >= 0:
+        return _multiline(val, indent, **kwargs)
+    else:
+        return _inline(val, **kwargs)
+
+
+def _map_item_tokens(kv, indent=-1):
+    k, v = kv
+    ret = []
+    ret.extend(_to_tokens(k, indent))
+    ret.extend((ast.Colon(':'), ast.Space(' ')))
+    ret.extend(_to_tokens(v, indent))
+    return ret
+
+
+_map_tokens = functools.partial(
+    _container,
+    start=ast.MapStart('{'), end=ast.MapEnd('}'),
+    item_func=_map_item_tokens, to_iter=lambda m: tuple(m.items()),
+)
+_list_tokens = functools.partial(
+    _container,
+    start=ast.ListStart('['), end=ast.ListEnd(']'),
+    item_func=_to_tokens, to_iter=tuple,
+)
+
+
+def _to_ast(*args, **kwargs):
+    # Run the parser to ensure a correct ast instead of building manually
+    tokens = tuple(_to_tokens(*args, **kwargs)) + (ast.EOF(''),)
+    return parse_from_tokens(tokens).val
 
 
 def _key_index(val, key):
@@ -96,7 +150,7 @@ def _modify_items(obj, chain, items_cb, *args):
 
 
 def _replace_val(obj, new_value):
-    return obj._replace(val=_merge_primitive(obj.val, new_value))
+    return obj._replace(val=_to_ast(new_value))
 
 
 def _set_cb(obj, i, val):
@@ -105,11 +159,11 @@ def _set_cb(obj, i, val):
     return new_items
 
 
-def _set(obj, chain, new_value):
+def _set(obj, chain, val):
     if not chain:
-        return _replace_val(obj, new_value)
+        return _replace_val(obj, val)
     else:
-        return _modify_items(obj, chain, _set_cb, new_value)
+        return _modify_items(obj, chain, _set_cb, val)
 
 
 def _delete_cb(obj, i):
@@ -191,6 +245,10 @@ def loads_roundtrip(s):
 
 def dumps_roundtrip(ast_proxy):
     return unparse(ast_proxy._ast_obj)
+
+
+def dumps(v, indented=False):
+    return unparse(_to_ast(v, indent=0 if indented else -1))
 
 
 def loads(s):

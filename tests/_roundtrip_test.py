@@ -5,6 +5,7 @@ import collections
 
 import pytest
 
+from dumbconf._roundtrip import dumps
 from dumbconf._roundtrip import dumps_roundtrip
 from dumbconf._roundtrip import loads
 from dumbconf._roundtrip import loads_roundtrip
@@ -219,3 +220,80 @@ def test_loads_map():
     ret = loads(src)
     assert isinstance(ret, collections.OrderedDict)
     assert ret == {'a': 'a_value', 'b': 'b_value', 'c': 'c_value'}
+
+
+@pytest.mark.parametrize(
+    ('v', 'expected'),
+    (
+        (True, 'True'),
+        (False, 'False'),
+        (None, 'None'),
+        ('ohai', "'ohai'"),
+        (5, '5'),
+        (5.1, '5.1'),
+        ((), '[]'),
+        ([], '[]'),
+        ({}, '{}'),
+    ),
+)
+def test_dumps_simple(v, expected):
+    assert dumps(v) == expected
+
+
+def test_dumps_list():
+    assert dumps([1, 2, 3]) == '[1, 2, 3]'
+
+
+def test_dumps_list_indented():
+    ret = dumps([1, 2, 3], indented=True)
+    assert ret == (
+        '[\n'
+        '    1,\n'
+        '    2,\n'
+        '    3,\n'
+        ']'
+    )
+
+
+def test_dumps_nested_list_indented():
+    ret = dumps([[1, 2], [3, 4]], indented=True)
+    assert ret == (
+        '[\n'
+        '    [\n'
+        '        1,\n'
+        '        2,\n'
+        '    ],\n'
+        '    [\n'
+        '        3,\n'
+        '        4,\n'
+        '    ],\n'
+        ']'
+    )
+
+
+def test_dumps_map():
+    assert dumps({1: 2, 3: 4}) == '{1: 2, 3: 4}'
+
+
+def test_dumps_map_indented():
+    ret = dumps({1: 2, 3: 4}, indented=True)
+    assert ret == (
+        '{\n'
+        '    1: 2,\n'
+        '    3: 4,\n'
+        '}'
+    )
+
+
+def test_dumps_nested_map_indented():
+    ret = dumps({1: {2: 3}, 4: {5: 6}}, indented=True)
+    assert ret == (
+        '{\n'
+        '    1: {\n'
+        '        2: 3,\n'
+        '    },\n'
+        '    4: {\n'
+        '        5: 6,\n'
+        '    },\n'
+        '}'
+    )

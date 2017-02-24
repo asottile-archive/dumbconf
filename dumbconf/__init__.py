@@ -13,6 +13,7 @@ debug = dumbconf._parse.debug
 parse = dumbconf._parse.parse
 unparse = dumbconf._parse.unparse
 
+dumps = dumbconf._roundtrip.dumps
 loads = dumbconf._roundtrip.loads
 
 loads_roundtrip = dumbconf._roundtrip.loads_roundtrip

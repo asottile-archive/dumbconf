@@ -125,14 +125,15 @@ def _parse_eof(tokens, offset):
     return ret, offset
 
 
-def parse(src):
-    tokens, offset = tokenize(src), 0
-
+def parse_from_tokens(tokens, offset=0):
     head, offset = get_pattern(tokens, offset, PT_HEAD)
     val, offset = _parse_val(tokens, offset)
     tail, offset = _parse_eof(tokens, offset)
-
     return ast.Doc(head, val, tail)
+
+
+def parse(src):
+    return parse_from_tokens(tokenize(src))
 
 
 def unparse(ast_obj):

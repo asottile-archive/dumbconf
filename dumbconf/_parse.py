@@ -39,11 +39,12 @@ def _parse_items(tokens, offset, endtoken, parse_item):
             comma_space, offset = get_pattern(tokens, offset, PT_COMMA_SPACE)
             val = val._replace(tail=val.tail + comma_space)
         items.append(val)
-    return tuple(items), (), offset
+    return tuple(items), (), (), offset
 
 
 def _parse_items_multiline(tokens, offset, endtoken, parse_item):
     more_head = ()
+    more_tail = ()
     items = []
     while True:
         head, offset = get_pattern(tokens, offset, PT_HEAD)
@@ -51,6 +52,8 @@ def _parse_items_multiline(tokens, offset, endtoken, parse_item):
         # item.  In that case, we augment the tail of the previous item.
         # If there are no items, this augments the head of the list itself.
         if matches_pattern(tokens, offset, endtoken):
+            if head and isinstance(head[-1], ast.Indent):
+                head, more_tail = head[:-1], head[-1:]
             if items:
                 items[-1] = items[-1]._replace(tail=items[-1].tail + head)
             else:
@@ -65,15 +68,16 @@ def _parse_items_multiline(tokens, offset, endtoken, parse_item):
             rest, offset = get_pattern(tokens, offset, ast.Space)
         val = val._replace(tail=val.tail + comma + rest)
         items.append(val)
-    return tuple(items), more_head, offset
+    return tuple(items), more_head, more_tail, offset
 
 
 def _parse_container(tokens, offset, cls, starttoken, endtoken, parse_item):
     head, offset, multiline = _parse_start(tokens, offset, starttoken)
     func = _parse_items_multiline if multiline else _parse_items
-    items, more_head, offset = func(tokens, offset, endtoken, parse_item)
+    itemsret = func(tokens, offset, endtoken, parse_item)
+    items, more_head, more_tail, offset = itemsret
     tail, offset = get_pattern(tokens, offset, endtoken)
-    return cls(head + more_head, items, tail), offset
+    return cls(head + more_head, items, more_tail + tail), offset
 
 
 def _parse_list_item(tokens, offset, head):

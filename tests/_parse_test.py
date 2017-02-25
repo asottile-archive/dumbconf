@@ -10,6 +10,11 @@ from dumbconf._parse import parse as parse_actual
 from dumbconf._parse import unparse
 
 
+EXPECT_VAL = (
+    'Expected one of (Bool, Float, Int, ListStart, MapStart, Null, String) '
+)
+
+
 def parse(s):
     """An assertion that roundtripping works"""
     ret = parse_actual(s)
@@ -412,6 +417,22 @@ def test_nested_list():
     assert ret == expected
 
 
+def test_regression_multiline_trailing_space():
+    _assert_parse_error(
+        '[\n'
+        '    True, \n'
+        ']',
+        EXPECT_VAL + 'but received NL\n\n'
+        'Line 2, column 11\n\n'
+        'Line|Source\n'
+        '----|------------------------------------------------------\n'
+        '1   |[\n'
+        '2   |    True, \n'
+        '               ^\n'
+        '3   |]\n',
+    )
+
+
 def test_map_trivial():
     ret = parse('{}')
     expected = ast.Doc(
@@ -631,12 +652,7 @@ def test_file_ending_in_several_comments():
 
 
 def test_parse_error_no_contents():
-    _assert_parse_error(
-        '',
-        'Expected one of '
-        '(Bool, Float, Int, ListStart, MapStart, Null, String) '
-        'but received EOF',
-    )
+    _assert_parse_error('', EXPECT_VAL + 'but received EOF')
 
 
 def test_parse_error_token_expected():

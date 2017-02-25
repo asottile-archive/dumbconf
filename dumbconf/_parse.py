@@ -15,6 +15,7 @@ from dumbconf._tre import Star
 
 
 PT_REST_OF_LINE = Or(ast.NL, Pattern(Star(ast.Space), ast.Comment))
+PT_COMMA_REST_OF_LINE = Pattern(ast.Comma, PT_REST_OF_LINE)
 PT_HEAD = Star(Or(ast.Indent, ast.NL, ast.Comment))
 PT_COLON_SPACE = Pattern(ast.Colon, ast.Space)
 PT_COMMA_SPACE = Pattern(ast.Comma, ast.Space)
@@ -60,13 +61,14 @@ def _parse_items_multiline(tokens, offset, endtoken, parse_item):
                 more_head = head
             break
         val, offset = parse_item(tokens, offset, head=head)
-        comma, offset = get_pattern(tokens, offset, ast.Comma)
         # Allow multiple items to be on a single line
-        if matches_pattern(tokens, offset, PT_REST_OF_LINE):
-            rest, offset = get_pattern(tokens, offset, PT_REST_OF_LINE)
-        else:
-            rest, offset = get_pattern(tokens, offset, ast.Space)
-        val = val._replace(tail=val.tail + comma + rest)
+        while not matches_pattern(tokens, offset, PT_COMMA_REST_OF_LINE):
+            rest, offset = get_pattern(tokens, offset, PT_COMMA_SPACE)
+            val = val._replace(tail=val.tail + rest)
+            items.append(val)
+            val, offset = parse_item(tokens, offset, head=())
+        rest, offset = get_pattern(tokens, offset, PT_COMMA_REST_OF_LINE)
+        val = val._replace(tail=val.tail + rest)
         items.append(val)
     return tuple(items), more_head, more_tail, offset
 

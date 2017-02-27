@@ -51,6 +51,37 @@ def test_replace_float():
     assert ret == '5.0  # comment'
 
 
+def test_replace_key():
+    val = loads_roundtrip("{k: 'v'}")
+    val['k'].replace_key('new key!')
+    ret = dumps_roundtrip(val)
+    assert ret == "{'new key!': 'v'}"
+
+
+def test_replace_key_at_root():
+    val = loads_roundtrip('{True: False}')
+    with pytest.raises(TypeError) as excinfo:
+        val.replace_key('new key')
+    assert excinfo.value.args == ('Index into a map to replace a key.',)
+
+
+def test_replace_key_not_a_map():
+    val = loads_roundtrip('[1, 2, 3]')
+    with pytest.raises(TypeError) as excinfo:
+        val[0].replace_key('new key')
+    assert excinfo.value.args == ('Can only replace Map keys, not List',)
+
+
+def test_replace_key_illegal_type():
+    val = loads_roundtrip('{True: False}')
+    with pytest.raises(TypeError) as excinfo:
+        val[True].replace_key([1, 2, 3])
+    assert excinfo.value.args == (
+        'Keys must be of type (BareWordKey, Bool, Float, Int, Null, String) '
+        'but got List',
+    )
+
+
 def test_replace_map_value_top_level():
     val = loads_roundtrip(
         '{\n'

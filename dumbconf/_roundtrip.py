@@ -199,6 +199,29 @@ def _delete_cb(obj, i):
 _delete = functools.partial(_modify_items, items_cb=_delete_cb)
 
 
+def _set_key_cb(obj, i, new_value):
+    if not isinstance(obj.val, ast.Map):
+        raise TypeError('Can only replace Map keys, not {}'.format(
+            type(obj.val).__name__,
+        ))
+    key = _to_ast(new_value)
+    if not isinstance(key, ast.PRIMITIVE):
+        raise TypeError(
+            'Keys must be of type ({}) but got {}'.format(
+                ', '.join(tp.__name__ for tp in ast.PRIMITIVE),
+                type(key).__name__,
+            )
+        )
+
+    items = list(obj.val.items)
+    items[i] = items[i]._replace(key=key)
+    return items
+
+
+def _set_key(obj, chain, new_value):
+    return _modify_items(obj, chain, _set_key_cb, new_value)
+
+
 class AstProxyChain(object):
     def __init__(self, ast_proxy, chain):
         self._ast_proxy = ast_proxy
@@ -223,6 +246,11 @@ class AstProxyChain(object):
 
     def chain(self, *args):
         return self._chain + args
+
+    def replace_key(self, primitive):
+        if not self.chain():
+            raise TypeError('Index into a map to replace a key.')
+        self.root = _set_key(self.root, self.chain(), primitive)
 
     def replace_value(self, primitive):
         self.root = _set(self.root, self.chain(), primitive)

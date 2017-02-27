@@ -7,6 +7,10 @@ import collections
 _ast_cls = collections.namedtuple
 
 
+def _namesort(types):
+    return tuple(sorted(types, key=lambda tp: tp.__name__))
+
+
 def is_multiline(self):
     return len(self.head) > 1
 
@@ -41,5 +45,5 @@ Space = _ast_cls('Space', ('src',))
 
 EOF = _ast_cls('EOF', ('src',))
 
-AST = tuple(v for v in vars().values() if isinstance(v, type))
-PRIMITIVE = tuple(v for v in AST if v._fields == ('val', 'src'))
+AST = _namesort(v for v in vars().values() if isinstance(v, type))
+PRIMITIVE = _namesort(v for v in AST if v._fields == ('val', 'src'))

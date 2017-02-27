@@ -2,11 +2,16 @@
 from __future__ import unicode_literals
 
 import collections
+import io
 
 import pytest
 
+from dumbconf._roundtrip import dump
+from dumbconf._roundtrip import dump_roundtrip
 from dumbconf._roundtrip import dumps
 from dumbconf._roundtrip import dumps_roundtrip
+from dumbconf._roundtrip import load
+from dumbconf._roundtrip import load_roundtrip
 from dumbconf._roundtrip import loads
 from dumbconf._roundtrip import loads_roundtrip
 
@@ -44,6 +49,37 @@ def test_replace_float():
     val.replace_value(5.)
     ret = dumps_roundtrip(val)
     assert ret == '5.0  # comment'
+
+
+def test_replace_key():
+    val = loads_roundtrip("{k: 'v'}")
+    val['k'].replace_key('new key!')
+    ret = dumps_roundtrip(val)
+    assert ret == "{'new key!': 'v'}"
+
+
+def test_replace_key_at_root():
+    val = loads_roundtrip('{True: False}')
+    with pytest.raises(TypeError) as excinfo:
+        val.replace_key('new key')
+    assert excinfo.value.args == ('Index into a map to replace a key.',)
+
+
+def test_replace_key_not_a_map():
+    val = loads_roundtrip('[1, 2, 3]')
+    with pytest.raises(TypeError) as excinfo:
+        val[0].replace_key('new key')
+    assert excinfo.value.args == ('Can only replace Map keys, not List',)
+
+
+def test_replace_key_illegal_type():
+    val = loads_roundtrip('{True: False}')
+    with pytest.raises(TypeError) as excinfo:
+        val[True].replace_key([1, 2, 3])
+    assert excinfo.value.args == (
+        'Keys must be of type (BareWordKey, Bool, Float, Int, Null, String) '
+        'but got List',
+    )
 
 
 def test_replace_map_value_top_level():
@@ -99,7 +135,7 @@ def test_replace_nested_map_value():
     )
 
 
-def test_deplace_nested_map_value_deeper():
+def test_replace_nested_map_value_deeper():
     val = loads_roundtrip('{a: {b: {c: True}}}')
     val['a']['b']['c'] = False
     ret = dumps_roundtrip(val)
@@ -297,3 +333,35 @@ def test_dumps_nested_map_indented():
         '    },\n'
         '}'
     )
+
+
+def test_load():
+    sio = io.StringIO('{hello: "world"}')
+    assert load(sio) == {'hello': 'world'}
+
+
+def test_dump():
+    sio = io.StringIO()
+    dump({'hello': 'world'}, sio)
+    assert sio.getvalue() == "{'hello': 'world'}"
+
+
+def test_load_dump_roundtrip():
+    s = (
+        '{\n'
+        '    True: False,  # comment\n'
+        '}'
+    )
+    sio = io.StringIO(s)
+    assert dumps_roundtrip(load_roundtrip(sio)) == s
+
+
+def test_dump_roundtrip():
+    s = (
+        '{\n'
+        '    True: False,  # comment\n'
+        '}'
+    )
+    sio = io.StringIO()
+    dump_roundtrip(loads_roundtrip(s), sio)
+    assert sio.getvalue() == s

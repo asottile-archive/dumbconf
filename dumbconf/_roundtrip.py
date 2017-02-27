@@ -247,9 +247,25 @@ def dumps_roundtrip(ast_proxy):
     return unparse(ast_proxy._ast_obj)
 
 
-def dumps(v, indented=False):
-    return unparse(_to_ast(v, indent=0 if indented else -1))
+def load_roundtrip(stream):
+    return loads_roundtrip(stream.read())
+
+
+def dump_roundtrip(ast_proxy, stream):
+    stream.write(dumps_roundtrip(ast_proxy))
 
 
 def loads(s):
     return loads_roundtrip(s).python_value()
+
+
+def dumps(v, indented=False):
+    return unparse(_to_ast(v, indent=0 if indented else -1))
+
+
+def load(stream):
+    return loads(stream.read())
+
+
+def dump(v, stream, indented=False):
+    stream.write(dumps(v, indented=indented))

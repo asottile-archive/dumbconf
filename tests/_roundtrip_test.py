@@ -2,11 +2,16 @@
 from __future__ import unicode_literals
 
 import collections
+import io
 
 import pytest
 
+from dumbconf._roundtrip import dump
+from dumbconf._roundtrip import dump_roundtrip
 from dumbconf._roundtrip import dumps
 from dumbconf._roundtrip import dumps_roundtrip
+from dumbconf._roundtrip import load
+from dumbconf._roundtrip import load_roundtrip
 from dumbconf._roundtrip import loads
 from dumbconf._roundtrip import loads_roundtrip
 
@@ -297,3 +302,35 @@ def test_dumps_nested_map_indented():
         '    },\n'
         '}'
     )
+
+
+def test_load():
+    sio = io.StringIO('{hello: "world"}')
+    assert load(sio) == {'hello': 'world'}
+
+
+def test_dump():
+    sio = io.StringIO()
+    dump({'hello': 'world'}, sio)
+    assert sio.getvalue() == "{'hello': 'world'}"
+
+
+def test_load_dump_roundtrip():
+    s = (
+        '{\n'
+        '    True: False,  # comment\n'
+        '}'
+    )
+    sio = io.StringIO(s)
+    assert dumps_roundtrip(load_roundtrip(sio)) == s
+
+
+def test_dump_roundtrip():
+    s = (
+        '{\n'
+        '    True: False,  # comment\n'
+        '}'
+    )
+    sio = io.StringIO()
+    dump_roundtrip(loads_roundtrip(s), sio)
+    assert sio.getvalue() == s

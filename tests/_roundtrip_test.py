@@ -135,7 +135,7 @@ def test_replace_nested_map_value():
     )
 
 
-def test_deplace_nested_map_value_deeper():
+def test_replace_nested_map_value_deeper():
     val = loads_roundtrip('{a: {b: {c: True}}}')
     val['a']['b']['c'] = False
     ret = dumps_roundtrip(val)

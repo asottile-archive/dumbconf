@@ -5,7 +5,8 @@
 
 Goal: define a "simple" configuration language (yet another) which is easy to
 write but does not give too much freedom.  The configuration language must
-support json but also be able to load "prettier" structures similar to yaml.
+support a json-like syntax but also be able to load "prettier" structures
+similar to yaml.
 The language will be strict in its indentation and form to encourage
 uniformity.
 

@@ -108,6 +108,21 @@ _parse_map = functools.partial(
 )
 
 
+def _parse_top_level_map(tokens, offset):
+    items = []
+    while True:
+        head, offset = get_pattern(tokens, offset, PT_HEAD)
+        if matches_pattern(tokens, offset, ast.EOF):
+            items[-1] = items[-1]._replace(tail=items[-1].tail + head)
+            break
+        item, offset = _parse_map_item(tokens, offset, head)
+        if matches_pattern(tokens, offset, PT_REST_OF_LINE):
+            tail, offset = get_pattern(tokens, offset, PT_REST_OF_LINE)
+            item = item._replace(tail=tail)
+        items.append(item)
+    return ast.Map(head=(), items=tuple(items), tail=()), offset
+
+
 def _parse_val(tokens, offset):
     if matches_pattern(tokens, offset, PT_VALUE_TOKENS):
         return get_pattern(tokens, offset, PT_VALUE_TOKENS, single=True)
@@ -120,6 +135,14 @@ def _parse_val(tokens, offset):
         pattern_expected(tokens, offset, missing_pattern)
 
 
+def _parse_top_level(tokens, offset):
+    # Only at the top level are non-bracketed maps allowed
+    if matches_pattern(tokens, offset, Pattern(PT_KEY, PT_COLON_SPACE)):
+        return _parse_top_level_map(tokens, offset)
+    else:
+        return _parse_val(tokens, offset)
+
+
 def _parse_eof(tokens, offset):
     """Parse the end of the file"""
     ret, offset = get_pattern(tokens, offset, Star(PT_REST_OF_LINE))
@@ -129,7 +152,7 @@ def _parse_eof(tokens, offset):
 
 def parse_from_tokens(tokens, offset=0):
     head, offset = get_pattern(tokens, offset, PT_HEAD)
-    val, offset = _parse_val(tokens, offset)
+    val, offset = _parse_top_level(tokens, offset)
     tail, offset = _parse_eof(tokens, offset)
     return ast.Doc(head, val, tail)
 

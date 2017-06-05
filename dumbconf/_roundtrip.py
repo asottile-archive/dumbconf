@@ -171,9 +171,14 @@ def _delete_cb(obj, i):
     new_items = list(obj.val.items)
     del new_items[i]
 
+    if obj.val.is_top_level_style and not new_items:
+        raise TypeError(
+            'Deleting the last element of a top level map is not allowed as '
+            'it would result in an invalid document when written out',
+        )
     # If we're deleting the last item of an inline container, we need to
     # remove the comma from the new last item
-    if not obj.val.is_multiline and len(obj.val.items) == i + 1:
+    elif not obj.val.is_multiline and len(obj.val.items) == i + 1:
         new_items[-1] = new_items[-1]._replace(tail=())
     # If we're deleting an element of a non-inline container we may need to
     # adjust the item before (to change ', ' to ',\n')

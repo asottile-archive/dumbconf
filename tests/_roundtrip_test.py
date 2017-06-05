@@ -99,6 +99,19 @@ def test_replace_map_value_top_level():
     )
 
 
+def test_replace_top_level_map_value_top_level():
+    val = loads_roundtrip(
+        'a: True  # comment\n'
+        'b: False  # comment\n'
+    )
+    val['b'] = None
+    ret = dumps_roundtrip(val)
+    assert ret == (
+        'a: True  # comment\n'
+        'b: None  # comment\n'
+    )
+
+
 def test_replace_list_value_top_level():
     val = loads_roundtrip(
         '[\n'
@@ -140,6 +153,19 @@ def test_replace_nested_map_value_deeper():
     val['a']['b']['c'] = False
     ret = dumps_roundtrip(val)
     assert ret == '{a: {b: {c: False}}}'
+
+
+def test_replace_nested_top_level_map():
+    val = loads_roundtrip(
+        'True: {False: "hello"}\n'
+        'False: {True: "world"}\n'
+    )
+    val[True][False] = 'goodbye'
+    ret = dumps_roundtrip(val)
+    assert ret == (
+        "True: {False: 'goodbye'}\n"
+        'False: {True: "world"}\n'
+    )
 
 
 def test_delete_dictionary_key():
@@ -215,6 +241,16 @@ def test_delete_fixup_indent():
         '[\n'
         '    False,\n'
         ']'
+    )
+
+
+def test_delete_last_top_level_map_key_error():
+    val = loads_roundtrip('True: False')
+    with pytest.raises(TypeError) as excinfo:
+        del val[True]
+    assert excinfo.value.args == (
+        'Deleting the last element of a top level map is not allowed as it '
+        'would result in an invalid document when written out',
     )
 
 

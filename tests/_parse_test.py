@@ -138,6 +138,7 @@ def test_trivial_list():
     )
     assert ret == expected
     assert not ret.val.is_multiline
+    assert not ret.val.is_top_level_style
 
 
 def test_list_one_value_inline():
@@ -208,6 +209,7 @@ def test_list_multiline_trivial():
     )
     assert ret == expected
     assert ret.val.is_multiline
+    assert not ret.val.is_top_level_style
 
 
 def test_list_multiline_comments():
@@ -446,6 +448,7 @@ def test_map_trivial():
     )
     assert ret == expected
     assert not ret.val.is_multiline
+    assert not ret.val.is_top_level_style
 
 
 def test_map_one_element_inline():
@@ -512,6 +515,7 @@ def test_map_multiline_trivial():
     )
     assert ret == expected
     assert ret.val.is_multiline
+    assert not ret.val.is_top_level_style
 
 
 def test_map_multiline_one_element():
@@ -589,6 +593,39 @@ def test_map_bare_word_key():
         tail=(),
     )
     assert ret == expected
+
+
+def test_top_level_map():
+    ret = parse(
+        'True: False\n'
+        'False: True'
+    )
+    expected = ast.Doc(
+        head=(),
+        val=ast.Map(
+            head=(),
+            items=(
+                ast.MapItem(
+                    head=(),
+                    key=ast.Bool(val=True, src='True'),
+                    inner=(ast.Colon(':'), ast.Space(' ')),
+                    val=ast.Bool(val=False, src='False'),
+                    tail=(ast.NL('\n'),),
+                ),
+                ast.MapItem(
+                    head=(),
+                    key=ast.Bool(val=False, src='False'),
+                    inner=(ast.Colon(':'), ast.Space(' ')),
+                    val=ast.Bool(val=True, src='True'),
+                    tail=(),
+                ),
+            ),
+            tail=(),
+        ),
+        tail=(),
+    )
+    assert ret == expected
+    assert ret.val.is_top_level_style
 
 
 def test_file_starting_in_ws():

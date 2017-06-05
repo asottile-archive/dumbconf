@@ -192,26 +192,34 @@ There are four supported forms of integers:
 }
 ```
 
+### Top level maps
+
+- A top level map may omit brackets and commas
+
+```yaml
+True: ['I', 'am', 'a', 'map']
+False: ['I', 'have', 'brackets']
+```
+
 ## Complete syntax example:
 
 ```yaml
 # A comment followed by a blank line
-{
-    scalars: {
-        true_values: [true, True, TRUE],  # An inline comment
-        false_values: [false, False, FALSE],
-        none_values: [None, nil, NULL, null],
-        strings: ["double quoted", 'single quoted', 'unicode: \u2603'],
-        ints: [0xDEADBEEF, 0b101010, 0o755, 0, 1234],
-        floats: [1., 1e5, .142857, 6.02e23],
-    },
 
-    'a json style map': {"key": "value", "other key": "other value"},
-    'a json style list': ["i", "am", "a", "list"],
-
-    'a python style map': {'key': 'value', 'other key': 'other value'},
-    'a python style list': ['i', 'am', 'a', 'list'],
-
-    'a bare words map': {key: 'value', other_key: 'other value'},
+scalars: {
+    true_values: [true, True, TRUE],  # An inline comment
+    false_values: [false, False, FALSE],
+    none_values: [None, nil, NULL, null],
+    strings: ["double quoted", 'single quoted', 'unicode: \u2603'],
+    ints: [0xDEADBEEF, 0b101010, 0o755, 0, 1234],
+    floats: [1., 1e5, .142857, 6.02e23],
 }
+
+'a json style map': {"key": "value", "other key": "other value"}
+'a json style list': ["i", "am", "a", "list"]
+
+'a python style map': {'key': 'value', 'other key': 'other value'}
+'a python style list': ['i', 'am', 'a', 'list']
+
+'a bare words map': {key: 'value', other_key: 'other value'}
 ```

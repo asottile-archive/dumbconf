@@ -78,7 +78,7 @@ def _multiline(val, indent, start, end, item_func, to_iter):
 
 
 def _container(val, indent, **kwargs):
-    if indent >= 0:
+    if indent >= 0 and val:
         return _multiline(val, indent, **kwargs)
     else:
         return _inline(val, **kwargs)
@@ -292,7 +292,7 @@ def loads(s):
     return loads_roundtrip(s).python_value()
 
 
-def dumps(v, indented=False):
+def dumps(v, indented=True):
     return unparse(_to_ast(v, indent=0 if indented else -1))
 
 
@@ -300,5 +300,5 @@ def load(stream):
     return loads(stream.read())
 
 
-def dump(v, stream, indented=False):
+def dump(v, stream, indented=True):
     stream.write(dumps(v, indented=indented))

@@ -313,11 +313,11 @@ def test_dumps_simple(v, expected):
 
 
 def test_dumps_list():
-    assert dumps([1, 2, 3]) == '[1, 2, 3]'
+    assert dumps([1, 2, 3], indented=False) == '[1, 2, 3]'
 
 
 def test_dumps_list_indented():
-    ret = dumps([1, 2, 3], indented=True)
+    ret = dumps([1, 2, 3])
     assert ret == (
         '[\n'
         '    1,\n'
@@ -328,7 +328,7 @@ def test_dumps_list_indented():
 
 
 def test_dumps_nested_list_indented():
-    ret = dumps([[1, 2], [3, 4]], indented=True)
+    ret = dumps([[1, 2], [3, 4]])
     assert ret == (
         '[\n'
         '    [\n'
@@ -344,11 +344,11 @@ def test_dumps_nested_list_indented():
 
 
 def test_dumps_map():
-    assert dumps({1: 2, 3: 4}) == '{1: 2, 3: 4}'
+    assert dumps({1: 2, 3: 4}, indented=False) == '{1: 2, 3: 4}'
 
 
 def test_dumps_map_indented():
-    ret = dumps({1: 2, 3: 4}, indented=True)
+    ret = dumps({1: 2, 3: 4})
     assert ret == (
         '{\n'
         '    1: 2,\n'
@@ -358,7 +358,7 @@ def test_dumps_map_indented():
 
 
 def test_dumps_nested_map_indented():
-    ret = dumps({1: {2: 3}, 4: {5: 6}}, indented=True)
+    ret = dumps({1: {2: 3}, 4: {5: 6}})
     assert ret == (
         '{\n'
         '    1: {\n'
@@ -378,7 +378,7 @@ def test_load():
 
 def test_dump():
     sio = io.StringIO()
-    dump({'hello': 'world'}, sio)
+    dump({'hello': 'world'}, sio, indented=False)
     assert sio.getvalue() == "{'hello': 'world'}"
 
 

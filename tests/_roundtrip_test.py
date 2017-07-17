@@ -371,6 +371,21 @@ def test_dumps_nested_map_indented():
     )
 
 
+def test_dumps_map_bare_word_keys():
+    ret = dumps({'hello': 'world'}, indented=False)
+    assert ret == "{hello: 'world'}"
+
+
+def test_dumps_map_bare_word_keys_deep():
+    ret = dumps({'hello': {'there': 'world'}}, indented=False)
+    assert ret == "{hello: {there: 'world'}}"
+
+
+def test_non_bare_wordable_dump():
+    ret = dumps({'True': {'un bearable': 'hi'}}, indented=False)
+    assert ret == "{'True': {'un bearable': 'hi'}}"
+
+
 def test_load():
     sio = io.StringIO('{hello: "world"}')
     assert load(sio) == {'hello': 'world'}
@@ -378,7 +393,7 @@ def test_load():
 
 def test_dump():
     sio = io.StringIO()
-    dump({'hello': 'world'}, sio, indented=False)
+    dump({'hello': 'world'}, sio, indented=False, bare_keys=False)
     assert sio.getvalue() == "{'hello': 'world'}"
 
 

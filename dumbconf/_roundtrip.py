@@ -3,12 +3,14 @@ from __future__ import unicode_literals
 
 import collections
 import functools
+import re
 
 from dumbconf import _primitive
 from dumbconf import ast
 from dumbconf._parse import parse
 from dumbconf._parse import parse_from_tokens
 from dumbconf._parse import unparse
+from dumbconf._tokenize import BARE_WORD_RE
 
 
 # TODO: replace with six?
@@ -18,6 +20,9 @@ if str is bytes:  # pragma: no cover (PY2)
 else:  # pragma: no cover (PY3)
     text_type = str
     int_types = (int,)
+
+
+BARE_WORD_FULL_MATCH_RE = re.compile(BARE_WORD_RE.pattern + '$')
 
 
 def _python_value(ast_obj):
@@ -34,9 +39,12 @@ def _python_value(ast_obj):
         raise AssertionError('Unknown ast: {!r}'.format(ast_obj))
 
 
-def _to_tokens(val, indent=-1):
+def _to_tokens(val, indent=-1, bare_keys=True, key=False):
     if isinstance(val, text_type):
-        return [ast.String(val=val, src=_primitive.String.dump(val))]
+        if bare_keys and key and BARE_WORD_FULL_MATCH_RE.match(val):
+            return [ast.BareWordKey(val=val, src=val)]
+        else:
+            return [ast.String(val=val, src=_primitive.String.dump(val))]
     elif isinstance(val, bool):
         return [ast.Bool(val=val, src=_primitive.Bool.dump(val))]
     elif val is None:
@@ -46,18 +54,18 @@ def _to_tokens(val, indent=-1):
     elif isinstance(val, float):
         return [ast.Float(val=val, src=_primitive.Float.dump(val))]
     elif isinstance(val, dict):
-        return _map_tokens(val, indent)
+        return _map_tokens(val, indent, bare_keys)
     elif isinstance(val, (tuple, list)):
-        return _list_tokens(val, indent)
+        return _list_tokens(val, indent, bare_keys)
     else:
         raise AssertionError('Unexpected value {!r}'.format(val))
 
 
-def _inline(val, start, end, item_func, to_iter):
+def _inline(val, bare_keys, start, end, item_func, to_iter):
     ret = [start]
     if val:
         items = to_iter(val)
-        ret.extend(item_func(items[0]))
+        ret.extend(item_func(items[0], bare_keys=bare_keys))
         for item in items[1:]:
             ret.extend((ast.Comma(','), ast.Space(' ')))
             ret.extend(item_func(item))
@@ -65,11 +73,11 @@ def _inline(val, start, end, item_func, to_iter):
     return ret
 
 
-def _multiline(val, indent, start, end, item_func, to_iter):
+def _multiline(val, indent, bare_keys, start, end, item_func, to_iter):
     ret = [start, ast.NL('\n')]
     for item in to_iter(val):
         ret.append(ast.Indent('    ' * (indent + 1)))
-        ret.extend(item_func(item, indent + 1))
+        ret.extend(item_func(item, indent + 1, bare_keys))
         ret.extend((ast.Comma(','), ast.NL('\n')))
     if indent > 0:
         ret.append(ast.Indent('    ' * indent))
@@ -77,19 +85,19 @@ def _multiline(val, indent, start, end, item_func, to_iter):
     return ret
 
 
-def _container(val, indent, **kwargs):
+def _container(val, indent, bare_keys, **kwargs):
     if indent >= 0 and val:
-        return _multiline(val, indent, **kwargs)
+        return _multiline(val, indent, bare_keys, **kwargs)
     else:
-        return _inline(val, **kwargs)
+        return _inline(val, bare_keys, **kwargs)
 
 
-def _map_item_tokens(kv, indent=-1):
+def _map_item_tokens(kv, indent=-1, bare_keys=True):
     k, v = kv
     ret = []
-    ret.extend(_to_tokens(k, indent))
+    ret.extend(_to_tokens(k, indent, bare_keys, key=True))
     ret.extend((ast.Colon(':'), ast.Space(' ')))
-    ret.extend(_to_tokens(v, indent))
+    ret.extend(_to_tokens(v, indent, bare_keys))
     return ret
 
 
@@ -292,13 +300,17 @@ def loads(s):
     return loads_roundtrip(s).python_value()
 
 
-def dumps(v, indented=True):
-    return unparse(_to_ast(v, indent=0 if indented else -1))
+def dumps(v, indented=True, bare_keys=True):
+    return unparse(_to_ast(
+        v,
+        indent=0 if indented else -1,
+        bare_keys=bare_keys,
+    ))
 
 
 def load(stream):
     return loads(stream.read())
 
 
-def dump(v, stream, indented=True):
-    stream.write(dumps(v, indented=indented))
+def dump(v, stream, **kwargs):
+    stream.write(dumps(v, **kwargs))

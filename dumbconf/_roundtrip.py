@@ -39,7 +39,8 @@ def _python_value(ast_obj):
         raise AssertionError('Unknown ast: {!r}'.format(ast_obj))
 
 
-def _to_tokens(val, indent=-1, bare_keys=True, key=False):
+def _to_tokens(val, indent=-1, bare_keys=True, key=False, top_level_map=False):
+    top_level_map = top_level_map and indent == 0
     if isinstance(val, text_type):
         if bare_keys and key and BARE_WORD_FULL_MATCH_RE.match(val):
             return [ast.BareWordKey(val=val, src=val)]
@@ -53,6 +54,8 @@ def _to_tokens(val, indent=-1, bare_keys=True, key=False):
         return [ast.Int(val=val, src=_primitive.Int.dump(val))]
     elif isinstance(val, float):
         return [ast.Float(val=val, src=_primitive.Float.dump(val))]
+    elif isinstance(val, dict) and val and top_level_map:
+        return _top_level_map_tokens(val, bare_keys)
     elif isinstance(val, dict):
         return _map_tokens(val, indent, bare_keys)
     elif isinstance(val, (tuple, list)):
@@ -111,6 +114,14 @@ _list_tokens = functools.partial(
     start=ast.ListStart('['), end=ast.ListEnd(']'),
     item_func=_to_tokens, to_iter=tuple,
 )
+
+
+def _top_level_map_tokens(dct, bare_keys):
+    tokens = []
+    for kv in dct.items():
+        tokens.extend(_map_item_tokens(kv, indent=0, bare_keys=bare_keys))
+        tokens.append(ast.NL('\n'))
+    return tokens
 
 
 def _to_ast(*args, **kwargs):
@@ -300,11 +311,12 @@ def loads(s):
     return loads_roundtrip(s).python_value()
 
 
-def dumps(v, indented=True, bare_keys=True):
+def dumps(v, indented=True, bare_keys=True, top_level_map=True):
     return unparse(_to_ast(
         v,
         indent=0 if indented else -1,
         bare_keys=bare_keys,
+        top_level_map=top_level_map,
     ))
 
 

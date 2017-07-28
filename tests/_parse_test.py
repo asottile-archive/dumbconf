@@ -29,7 +29,7 @@ def _assert_parse_error(src, s):
 
 
 def test_debug():
-    ret = debug(parse('[True]'))
+    ret = debug(parse('[true]'))
     assert ret == (
         'Doc(\n'
         '    head=(),\n'
@@ -49,16 +49,13 @@ def test_debug():
         '        ),\n'
         '    ),\n'
         '    tail=(),\n'
-        ')'.format('[', 'True', ']')
+        ')'.format('[', 'true', ']')
     )
 
 
 @pytest.mark.parametrize(
     ('s', 'expected_val'),
-    (
-        ('TRUE', True), ('True', True), ('true', True),
-        ('FALSE', False), ('False', False), ('false', False),
-    ),
+    (('true', True), ('false', False)),
 )
 def test_parse_boolean(s, expected_val):
     expected = ast.Doc(
@@ -67,10 +64,9 @@ def test_parse_boolean(s, expected_val):
     assert parse(s) == expected
 
 
-@pytest.mark.parametrize('s', ('NULL', 'null', 'None', 'nil'))
-def test_parse_null(s):
-    expected = ast.Doc(head=(), val=ast.Null(None, src=s), tail=())
-    assert parse(s) == expected
+def test_parse_null():
+    expected = ast.Doc(head=(), val=ast.Null(None, src='null'), tail=())
+    assert parse('null') == expected
 
 
 @pytest.mark.parametrize(
@@ -142,14 +138,14 @@ def test_trivial_list():
 
 
 def test_list_one_value_inline():
-    ret = parse('[True]')
+    ret = parse('[true]')
     expected = ast.Doc(
         head=(),
         val=ast.List(
             head=(ast.ListStart('['),),
             items=(
                 ast.ListItem(
-                    head=(), val=ast.Bool(val=True, src='True'), tail=(),
+                    head=(), val=ast.Bool(val=True, src='true'), tail=(),
                 ),
             ),
             tail=(ast.ListEnd(']'),),
@@ -160,7 +156,7 @@ def test_list_one_value_inline():
 
 
 def test_list_several_values_inline():
-    ret = parse('[True, False]')
+    ret = parse('[true, false]')
     expected = ast.Doc(
         head=(),
         val=ast.List(
@@ -168,12 +164,12 @@ def test_list_several_values_inline():
             items=(
                 ast.ListItem(
                     head=(),
-                    val=ast.Bool(val=True, src='True'),
+                    val=ast.Bool(val=True, src='true'),
                     tail=(ast.Comma(','), ast.Space(' ')),
                 ),
                 ast.ListItem(
                     head=(),
-                    val=ast.Bool(val=False, src='False'),
+                    val=ast.Bool(val=False, src='false'),
                     tail=(),
                 ),
             ),
@@ -186,12 +182,12 @@ def test_list_several_values_inline():
 
 def test_regression_inline_list_missing_comma():
     _assert_parse_error(
-        '[TrueFalse]',
+        '[truefalse]',
         'Expected one of (Comma) but received Bool\n\n'
         'Line 1, column 6\n\n'
         'Line|Source\n'
         '----|------------------------------------------------------\n'
-        '1   |[TrueFalse]\n'
+        '1   |[truefalse]\n'
         '          ^\n',
     )
 
@@ -236,7 +232,7 @@ def test_list_multiline_comments():
 def test_list_multiline():
     ret = parse(
         '[\n'
-        '    True,\n'
+        '    true,\n'
         ']'
     )
     expected = ast.Doc(
@@ -246,7 +242,7 @@ def test_list_multiline():
             items=(
                 ast.ListItem(
                     head=(ast.Indent('    '),),
-                    val=ast.Bool(val=True, src='True'),
+                    val=ast.Bool(val=True, src='true'),
                     tail=(ast.Comma(','), ast.NL('\n')),
                 ),
             ),
@@ -261,7 +257,7 @@ def test_list_multiline_comment_before():
     ret = parse(
         '[\n'
         '    # Hello\n'
-        '    True,\n'
+        '    true,\n'
         ']'
     )
     expected = ast.Doc(
@@ -274,7 +270,7 @@ def test_list_multiline_comment_before():
                         ast.Indent('    '), ast.Comment('# Hello\n'),
                         ast.Indent('    '),
                     ),
-                    val=ast.Bool(val=True, src='True'),
+                    val=ast.Bool(val=True, src='true'),
                     tail=(ast.Comma(','), ast.NL('\n')),
                 ),
             ),
@@ -288,7 +284,7 @@ def test_list_multiline_comment_before():
 def test_list_multiline_comment_after():
     ret = parse(
         '[\n'
-        '    True,\n'
+        '    true,\n'
         '    # Comment\n'
         ']'
     )
@@ -299,7 +295,7 @@ def test_list_multiline_comment_after():
             items=(
                 ast.ListItem(
                     head=(ast.Indent('    '),),
-                    val=ast.Bool(val=True, src='True'),
+                    val=ast.Bool(val=True, src='true'),
                     tail=(
                         ast.Comma(','), ast.NL('\n'),
                         ast.Indent('    '), ast.Comment('# Comment\n'),
@@ -316,8 +312,8 @@ def test_list_multiline_comment_after():
 def test_list_multiple_items_multiline():
     ret = parse(
         '[\n'
-        '    True,\n'
-        '    False,\n'
+        '    true,\n'
+        '    false,\n'
         ']'
     )
     expected = ast.Doc(
@@ -327,12 +323,12 @@ def test_list_multiple_items_multiline():
             items=(
                 ast.ListItem(
                     head=(ast.Indent('    '),),
-                    val=ast.Bool(val=True, src='True'),
+                    val=ast.Bool(val=True, src='true'),
                     tail=(ast.Comma(','), ast.NL('\n')),
                 ),
                 ast.ListItem(
                     head=(ast.Indent('    '),),
-                    val=ast.Bool(val=False, src='False'),
+                    val=ast.Bool(val=False, src='false'),
                     tail=(ast.Comma(','), ast.NL('\n')),
                 ),
             ),
@@ -346,8 +342,8 @@ def test_list_multiple_items_multiline():
 def test_list_multiline_multiple_items_on_one_line():
     ret = parse(
         '[\n'
-        '    True, False,\n'
-        '    False, True,\n'
+        '    true, false,\n'
+        '    false, true,\n'
         ']'
     )
     expected = ast.Doc(
@@ -357,22 +353,22 @@ def test_list_multiline_multiple_items_on_one_line():
             items=(
                 ast.ListItem(
                     head=(ast.Indent('    '),),
-                    val=ast.Bool(val=True, src='True'),
+                    val=ast.Bool(val=True, src='true'),
                     tail=(ast.Comma(','), ast.Space(' ')),
                 ),
                 ast.ListItem(
                     head=(),
-                    val=ast.Bool(val=False, src='False'),
+                    val=ast.Bool(val=False, src='false'),
                     tail=(ast.Comma(','), ast.NL('\n')),
                 ),
                 ast.ListItem(
                     head=(ast.Indent('    '),),
-                    val=ast.Bool(val=False, src='False'),
+                    val=ast.Bool(val=False, src='false'),
                     tail=(ast.Comma(','), ast.Space(' ')),
                 ),
                 ast.ListItem(
                     head=(),
-                    val=ast.Bool(val=True, src='True'),
+                    val=ast.Bool(val=True, src='true'),
                     tail=(ast.Comma(','), ast.NL('\n')),
                 ),
             ),
@@ -422,14 +418,14 @@ def test_nested_list():
 def test_regression_multiline_trailing_space():
     _assert_parse_error(
         '[\n'
-        '    True, \n'
+        '    true, \n'
         ']',
         EXPECT_VAL + 'but received NL\n\n'
         'Line 2, column 11\n\n'
         'Line|Source\n'
         '----|------------------------------------------------------\n'
         '1   |[\n'
-        '2   |    True, \n'
+        '2   |    true, \n'
         '               ^\n'
         '3   |]\n',
     )
@@ -452,7 +448,7 @@ def test_map_trivial():
 
 
 def test_map_one_element_inline():
-    ret = parse('{True: False}')
+    ret = parse('{true: false}')
     expected = ast.Doc(
         head=(),
         val=ast.Map(
@@ -460,9 +456,9 @@ def test_map_one_element_inline():
             items=(
                 ast.MapItem(
                     head=(),
-                    key=ast.Bool(val=True, src='True'),
+                    key=ast.Bool(val=True, src='true'),
                     inner=(ast.Colon(':'), ast.Space(' ')),
-                    val=ast.Bool(val=False, src='False'),
+                    val=ast.Bool(val=False, src='false'),
                     tail=(),
                 ),
             ),
@@ -474,7 +470,7 @@ def test_map_one_element_inline():
 
 
 def test_map_multiple_elements_inline():
-    ret = parse('{True: False, False: True}')
+    ret = parse('{true: false, false: true}')
     expected = ast.Doc(
         head=(),
         val=ast.Map(
@@ -482,16 +478,16 @@ def test_map_multiple_elements_inline():
             items=(
                 ast.MapItem(
                     head=(),
-                    key=ast.Bool(val=True, src='True'),
+                    key=ast.Bool(val=True, src='true'),
                     inner=(ast.Colon(':'), ast.Space(' ')),
-                    val=ast.Bool(val=False, src='False'),
+                    val=ast.Bool(val=False, src='false'),
                     tail=(ast.Comma(','), ast.Space(' ')),
                 ),
                 ast.MapItem(
                     head=(),
-                    key=ast.Bool(val=False, src='False'),
+                    key=ast.Bool(val=False, src='false'),
                     inner=(ast.Colon(':'), ast.Space(' ')),
-                    val=ast.Bool(val=True, src='True'),
+                    val=ast.Bool(val=True, src='true'),
                     tail=(),
                 ),
             ),
@@ -521,7 +517,7 @@ def test_map_multiline_trivial():
 def test_map_multiline_one_element():
     ret = parse(
         '{\n'
-        '    True: False,\n'
+        '    true: false,\n'
         '}'
     )
     expected = ast.Doc(
@@ -531,9 +527,9 @@ def test_map_multiline_one_element():
             items=(
                 ast.MapItem(
                     head=(ast.Indent('    '),),
-                    key=ast.Bool(val=True, src='True'),
+                    key=ast.Bool(val=True, src='true'),
                     inner=(ast.Colon(':'), ast.Space(' ')),
-                    val=ast.Bool(val=False, src='False'),
+                    val=ast.Bool(val=False, src='false'),
                     tail=(ast.Comma(','), ast.NL('\n')),
                 ),
             ),
@@ -547,7 +543,7 @@ def test_map_multiline_one_element():
 def test_comment_at_start_of_multiline_json():
     ret = parse(
         '{  # bar\n'
-        '    True: False,\n'
+        '    true: false,\n'
         '}'
     )
     expected = ast.Doc(
@@ -560,9 +556,9 @@ def test_comment_at_start_of_multiline_json():
             items=(
                 ast.MapItem(
                     head=(ast.Indent('    '),),
-                    key=ast.Bool(val=True, src='True'),
+                    key=ast.Bool(val=True, src='true'),
                     inner=(ast.Colon(':'), ast.Space(' ')),
-                    val=ast.Bool(val=False, src='False'),
+                    val=ast.Bool(val=False, src='false'),
                     tail=(ast.Comma(','), ast.NL('\n')),
                 ),
             ),
@@ -597,8 +593,8 @@ def test_map_bare_word_key():
 
 def test_top_level_map():
     ret = parse(
-        'True: False\n'
-        'False: True'
+        'true: false\n'
+        'false: true'
     )
     expected = ast.Doc(
         head=(),
@@ -607,16 +603,16 @@ def test_top_level_map():
             items=(
                 ast.MapItem(
                     head=(),
-                    key=ast.Bool(val=True, src='True'),
+                    key=ast.Bool(val=True, src='true'),
                     inner=(ast.Colon(':'), ast.Space(' ')),
-                    val=ast.Bool(val=False, src='False'),
+                    val=ast.Bool(val=False, src='false'),
                     tail=(ast.NL('\n'),),
                 ),
                 ast.MapItem(
                     head=(),
-                    key=ast.Bool(val=False, src='False'),
+                    key=ast.Bool(val=False, src='false'),
                     inner=(ast.Colon(':'), ast.Space(' ')),
-                    val=ast.Bool(val=True, src='True'),
+                    val=ast.Bool(val=True, src='true'),
                     tail=(),
                 ),
             ),
@@ -629,58 +625,58 @@ def test_top_level_map():
 
 
 def test_file_starting_in_ws():
-    ret = parse('\n\nTrue')
+    ret = parse('\n\ntrue')
     expected = ast.Doc(
         head=(ast.NL('\n'), ast.NL('\n')),
-        val=ast.Bool(val=True, src='True'),
+        val=ast.Bool(val=True, src='true'),
         tail=(),
     )
     assert ret == expected
 
 
 def test_file_ending_in_ws():
-    ret = parse('True\n')
+    ret = parse('true\n')
     expected = ast.Doc(
-        head=(), val=ast.Bool(val=True, src='True'), tail=(ast.NL('\n'),),
+        head=(), val=ast.Bool(val=True, src='true'), tail=(ast.NL('\n'),),
     )
     assert ret == expected
 
 
 def test_file_starting_with_comments():
-    ret = parse('# hello\nTrue')
+    ret = parse('# hello\ntrue')
     expected = ast.Doc(
         head=(ast.Comment('# hello\n'),),
-        val=ast.Bool(val=True, src='True'),
+        val=ast.Bool(val=True, src='true'),
         tail=(),
     )
     assert ret == expected
 
 
 def test_file_ending_in_comment():
-    ret = parse('True # ohai\n')
+    ret = parse('true # ohai\n')
     expected = ast.Doc(
         head=(),
-        val=ast.Bool(val=True, src='True'),
+        val=ast.Bool(val=True, src='true'),
         tail=(ast.Space(' '), ast.Comment('# ohai\n')),
     )
     assert ret == expected
 
 
 def test_file_ending_in_comment_no_nl():
-    ret = parse('True # ohai')
+    ret = parse('true # ohai')
     expected = ast.Doc(
         head=(),
-        val=ast.Bool(val=True, src='True'),
+        val=ast.Bool(val=True, src='true'),
         tail=(ast.Space(' '), ast.Comment('# ohai')),
     )
     assert ret == expected
 
 
 def test_file_ending_in_several_comments():
-    ret = parse('True\n# hello\n# there\n')
+    ret = parse('true\n# hello\n# there\n')
     expected = ast.Doc(
         head=(),
-        val=ast.Bool(val=True, src='True'),
+        val=ast.Bool(val=True, src='true'),
         tail=(
             ast.NL('\n'), ast.Comment('# hello\n'), ast.Comment('# there\n'),
         ),

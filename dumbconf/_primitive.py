@@ -9,7 +9,9 @@ class Bool(object):
     def parse(s):
         return ast.literal_eval(s.lower().capitalize())
 
-    dump = staticmethod(repr)
+    @staticmethod
+    def dump(v):
+        return repr(v).lower()
 
 
 class Null(object):
@@ -17,7 +19,9 @@ class Null(object):
     def parse(_):
         return None
 
-    dump = staticmethod(repr)
+    @staticmethod
+    def dump(_):
+        return 'null'
 
 
 class Float(object):

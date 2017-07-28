@@ -10,8 +10,8 @@ from dumbconf import _primitive
     ('v', 'tp', 'expected'),
     (
         ('foo', _primitive.String, "'foo'"),
-        (True, _primitive.Bool, 'True'),
-        (None, _primitive.Null, 'None'),
+        (True, _primitive.Bool, 'true'),
+        (None, _primitive.Null, 'null'),
         ('key', _primitive.BareWord, 'key'),
     ),
 )

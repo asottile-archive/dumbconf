@@ -23,10 +23,9 @@ INDENT_RE = re.compile('(?<=\n)(    )+')
 NL_RE = re.compile('\n')
 SPACE_RE = re.compile('(?<!\n) ')
 
-BOOL_TOKENS = ('TRUE', 'True', 'true', 'FALSE', 'False', 'false')
+BOOL_TOKENS = ('true', 'false')
 BOOL_RE = re.compile(_or(*BOOL_TOKENS))
-NULL_TOKENS = ('NULL', 'null', 'None', 'nil')
-NULL_RE = re.compile(_or(*NULL_TOKENS))
+NULL_RE = re.compile('null')
 _exp = '([eE][-+]?[0-9]+)'
 FLOAT_RE = re.compile('-?' + _or(
     '[0-9]+' + _exp,
@@ -43,8 +42,8 @@ BARE_WORD_RE = re.compile(
     '[A-Za-z_][A-Za-z0-9_-]*' +
     # Followed by some non-identifier
     '(?![A-Za-z0-9_-])' +
-    # But not our true / null tokens
-    _nor(*BOOL_TOKENS) + _nor(*NULL_TOKENS),
+    # But not our bool / null tokens
+    _nor(*BOOL_TOKENS) + _nor('null'),
 )
 
 LIST_START_RE = re.compile(r'\[')

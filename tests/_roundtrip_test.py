@@ -17,35 +17,35 @@ from dumbconf._roundtrip import loads_roundtrip
 
 
 def test_replace_value_same_type():
-    val = loads_roundtrip('True  # comment')
+    val = loads_roundtrip('true  # comment')
     val.replace_value(False)
     ret = dumps_roundtrip(val)
-    assert ret == 'False  # comment'
+    assert ret == 'false  # comment'
 
 
 def test_replace_value_new_type():
-    val = loads_roundtrip('True  # comment')
+    val = loads_roundtrip('true  # comment')
     val.replace_value(None)
     ret = dumps_roundtrip(val)
-    assert ret == 'None  # comment'
+    assert ret == 'null  # comment'
 
 
 def test_replace_string():
-    val = loads_roundtrip('True  # comment')
+    val = loads_roundtrip('true  # comment')
     val.replace_value('ohai')
     ret = dumps_roundtrip(val)
     assert ret == "'ohai'  # comment"
 
 
 def test_replace_int():
-    val = loads_roundtrip('True  # comment')
+    val = loads_roundtrip('true  # comment')
     val.replace_value(5)
     ret = dumps_roundtrip(val)
     assert ret == '5  # comment'
 
 
 def test_replace_float():
-    val = loads_roundtrip('True  # comment')
+    val = loads_roundtrip('true  # comment')
     val.replace_value(5.)
     ret = dumps_roundtrip(val)
     assert ret == '5.0  # comment'
@@ -59,7 +59,7 @@ def test_replace_key():
 
 
 def test_replace_key_at_root():
-    val = loads_roundtrip('{True: False}')
+    val = loads_roundtrip('{true: false}')
     with pytest.raises(TypeError) as excinfo:
         val.replace_key('new key')
     assert excinfo.value.args == ('Index into a map to replace a key.',)
@@ -73,7 +73,7 @@ def test_replace_key_not_a_map():
 
 
 def test_replace_key_illegal_type():
-    val = loads_roundtrip('{True: False}')
+    val = loads_roundtrip('{true: false}')
     with pytest.raises(TypeError) as excinfo:
         val[True].replace_key([1, 2, 3])
     assert excinfo.value.args == (
@@ -85,46 +85,46 @@ def test_replace_key_illegal_type():
 def test_replace_map_value_top_level():
     val = loads_roundtrip(
         '{\n'
-        '    a: True,  # comment\n'
-        '    b: False,  # comment\n'
+        '    a: true,  # comment\n'
+        '    b: false,  # comment\n'
         '}\n'
     )
     val['b'] = None
     ret = dumps_roundtrip(val)
     assert ret == (
         '{\n'
-        '    a: True,  # comment\n'
-        '    b: None,  # comment\n'
+        '    a: true,  # comment\n'
+        '    b: null,  # comment\n'
         '}\n'
     )
 
 
 def test_replace_top_level_map_value_top_level():
     val = loads_roundtrip(
-        'a: True  # comment\n'
-        'b: False  # comment\n'
+        'a: true  # comment\n'
+        'b: false  # comment\n'
     )
     val['b'] = None
     ret = dumps_roundtrip(val)
     assert ret == (
-        'a: True  # comment\n'
-        'b: None  # comment\n'
+        'a: true  # comment\n'
+        'b: null  # comment\n'
     )
 
 
 def test_replace_list_value_top_level():
     val = loads_roundtrip(
         '[\n'
-        '    True,  # comment\n'
-        '    False,  # comment\n'
+        '    true,  # comment\n'
+        '    false,  # comment\n'
         ']\n'
     )
     val[0] = None
     ret = dumps_roundtrip(val)
     assert ret == (
         '[\n'
-        '    None,  # comment\n'
-        '    False,  # comment\n'
+        '    null,  # comment\n'
+        '    false,  # comment\n'
         ']\n'
     )
 
@@ -133,7 +133,7 @@ def test_replace_nested_map_value():
     val = loads_roundtrip(
         '{\n'
         '    a: {\n'
-        '        b: True,  # comment\n'
+        '        b: true,  # comment\n'
         '    },\n'
         '}\n'
     )
@@ -142,29 +142,29 @@ def test_replace_nested_map_value():
     assert ret == (
         '{\n'
         '    a: {\n'
-        '        b: None,  # comment\n'
+        '        b: null,  # comment\n'
         '    },\n'
         '}\n'
     )
 
 
 def test_replace_nested_map_value_deeper():
-    val = loads_roundtrip('{a: {b: {c: True}}}')
+    val = loads_roundtrip('{a: {b: {c: true}}}')
     val['a']['b']['c'] = False
     ret = dumps_roundtrip(val)
-    assert ret == '{a: {b: {c: False}}}'
+    assert ret == '{a: {b: {c: false}}}'
 
 
 def test_replace_nested_top_level_map():
     val = loads_roundtrip(
-        'True: {False: "hello"}\n'
-        'False: {True: "world"}\n'
+        'true: {false: "hello"}\n'
+        'false: {true: "world"}\n'
     )
     val[True][False] = 'goodbye'
     ret = dumps_roundtrip(val)
     assert ret == (
-        "True: {False: 'goodbye'}\n"
-        'False: {True: "world"}\n'
+        "true: {false: 'goodbye'}\n"
+        'false: {true: "world"}\n'
     )
 
 
@@ -172,9 +172,9 @@ def test_delete_dictionary_key():
     val = loads_roundtrip(
         '{\n'
         '    # comment documenting a\n'
-        '    a: True,  # comment\n'
+        '    a: true,  # comment\n'
         '    # comment documenting b\n'
-        '    b: False,  # comment\n'
+        '    b: false,  # comment\n'
         '}\n'
     )
     del val['a']
@@ -182,7 +182,7 @@ def test_delete_dictionary_key():
     assert ret == (
         '{\n'
         '    # comment documenting b\n'
-        '    b: False,  # comment\n'
+        '    b: false,  # comment\n'
         '}\n'
     )
 
@@ -191,8 +191,8 @@ def test_delete_nested():
     val = loads_roundtrip(
         '{\n'
         '    a: {\n'
-        '        b: True,\n'
-        '        c: True,\n'
+        '        b: true,\n'
+        '        c: true,\n'
         '    },\n'
         '}\n'
     )
@@ -201,30 +201,30 @@ def test_delete_nested():
     assert ret == (
         '{\n'
         '    a: {\n'
-        '        c: True,\n'
+        '        c: true,\n'
         '    },\n'
         '}\n'
     )
 
 
 def test_delete_nested_fixup_trailing_comma_inline():
-    val = loads_roundtrip('{a: {b: {c: True, d: False}}}')
+    val = loads_roundtrip('{a: {b: {c: true, d: false}}}')
     del val['a']['b']['d']
     ret = dumps_roundtrip(val)
-    assert ret == '{a: {b: {c: True}}}'
+    assert ret == '{a: {b: {c: true}}}'
 
 
 def test_delete_fixup_trailing_space_multiline():
     val = loads_roundtrip(
         '[\n'
-        '    True, False,\n'
+        '    true, false,\n'
         ']'
     )
     del val[1]
     ret = dumps_roundtrip(val)
     assert ret == (
         '[\n'
-        '    True,\n'
+        '    true,\n'
         ']'
     )
 
@@ -232,20 +232,20 @@ def test_delete_fixup_trailing_space_multiline():
 def test_delete_fixup_indent():
     val = loads_roundtrip(
         '[\n'
-        '    True, False,\n'
+        '    true, false,\n'
         ']'
     )
     del val[0]
     ret = dumps_roundtrip(val)
     assert ret == (
         '[\n'
-        '    False,\n'
+        '    false,\n'
         ']'
     )
 
 
 def test_delete_last_top_level_map_key_error():
-    val = loads_roundtrip('True: False')
+    val = loads_roundtrip('true: false')
     with pytest.raises(TypeError) as excinfo:
         del val[True]
     assert excinfo.value.args == (
@@ -257,9 +257,9 @@ def test_delete_last_top_level_map_key_error():
 def test_nested_python_value():
     val = loads_roundtrip(
         '{\n'
-        '    True: {\n'
-        '        False: False,\n'
-        '        True: True,\n'
+        '    true: {\n'
+        '        false: false,\n'
+        '        true: true,\n'
         '    },\n'
         '}'
     )
@@ -270,9 +270,9 @@ def test_nested_python_value():
 @pytest.mark.parametrize(
     ('s', 'expected'),
     (
-        ('True', True),
-        ('False', False),
-        ('None', None),
+        ('true', True),
+        ('false', False),
+        ('null', None),
         ("'ohai'", 'ohai'),
         ('5', 5),
         ('5.', 5.),
@@ -283,7 +283,7 @@ def test_loads_simple(s, expected):
 
 
 def test_loads_list():
-    src = '[True, False, "string"]'
+    src = '[true, false, "string"]'
     assert loads(src) == [True, False, 'string']
 
 
@@ -297,9 +297,9 @@ def test_loads_map():
 @pytest.mark.parametrize(
     ('v', 'expected'),
     (
-        (True, 'True'),
-        (False, 'False'),
-        (None, 'None'),
+        (True, 'true'),
+        (False, 'false'),
+        (None, 'null'),
         ('ohai', "'ohai'"),
         (5, '5'),
         (5.1, '5.1'),
@@ -394,8 +394,8 @@ def test_dumps_map_bare_word_keys_deep():
 
 
 def test_non_bare_wordable_dump():
-    ret = dumps({'True': {'un bearable': 'hi'}}, indented=False)
-    assert ret == "{'True': {'un bearable': 'hi'}}"
+    ret = dumps({'true': {'un bearable': 'hi'}}, indented=False)
+    assert ret == "{'true': {'un bearable': 'hi'}}"
 
 
 def test_load():
@@ -412,7 +412,7 @@ def test_dump():
 def test_load_dump_roundtrip():
     s = (
         '{\n'
-        '    True: False,  # comment\n'
+        '    true: false,  # comment\n'
         '}'
     )
     sio = io.StringIO(s)
@@ -422,7 +422,7 @@ def test_load_dump_roundtrip():
 def test_dump_roundtrip():
     s = (
         '{\n'
-        '    True: False,  # comment\n'
+        '    true: false,  # comment\n'
         '}'
     )
     sio = io.StringIO()

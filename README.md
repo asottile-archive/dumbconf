@@ -46,14 +46,14 @@ true  # an inline comment
 ```yaml
 {
     im_a_bare_word_key: 'value',
-    'True': 'indeed, my key needed quoting',
+    'true': 'indeed, my key needed quoting',
 }
 ```
 
 ### Boolean
-- There are 6 tokens interpreted as booleans
+- There are 2 tokens interpreted as booleans
 ```yaml
-[TRUE, FALSE, True, False, true, false]
+[true, false]
 ```
 
 ### Integers
@@ -87,9 +87,9 @@ There are four supported forms of integers:
 ```
 
 ### null
-- There are 4 tokens interpreted as null
+- There is one toke interpreted as null
 ```yaml
-[NULL, null, None, nil]
+[null]
 ```
 
 ## Lists
@@ -207,9 +207,8 @@ False: ['I', 'have', 'brackets']
 # A comment followed by a blank line
 
 scalars: {
-    true_values: [true, True, TRUE],  # An inline comment
-    false_values: [false, False, FALSE],
-    none_values: [None, nil, NULL, null],
+    bool_values: [true, false],  # An inline comment
+    null_value: [null],
     strings: ["double quoted", 'single quoted', 'unicode: \u2603'],
     ints: [0xDEADBEEF, 0b101010, 0o755, 0, 1234],
     floats: [1., 1e5, .142857, 6.02e23],

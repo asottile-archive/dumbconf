@@ -22,6 +22,18 @@ else:  # pragma: no cover (PY3)
     int_types = (int,)
 
 
+class Settings(collections.namedtuple('Settings', ('indent', 'bare_keys'))):
+    __slots__ = ()
+
+    @property
+    def indented(self):
+        assert self.indent >= 0
+        return self._replace(indent=self.indent + 1)
+
+
+Settings.DEFAULT = Settings(-1, True)
+
+
 BARE_WORD_FULL_MATCH_RE = re.compile(BARE_WORD_RE.pattern + '$')
 
 
@@ -39,10 +51,10 @@ def _python_value(ast_obj):
         raise AssertionError('Unknown ast: {!r}'.format(ast_obj))
 
 
-def _to_tokens(val, indent=-1, bare_keys=True, key=False, top_level_map=False):
-    top_level_map = top_level_map and indent == 0
+def _to_tokens(val, settings=Settings.DEFAULT, key=False, top_level_map=False):
+    top_level_map = top_level_map and settings.indent == 0
     if isinstance(val, text_type):
-        if bare_keys and key and BARE_WORD_FULL_MATCH_RE.match(val):
+        if settings.bare_keys and key and BARE_WORD_FULL_MATCH_RE.match(val):
             return [ast.BareWordKey(val=val, src=val)]
         else:
             return [ast.String(val=val, src=_primitive.String.dump(val))]
@@ -55,52 +67,52 @@ def _to_tokens(val, indent=-1, bare_keys=True, key=False, top_level_map=False):
     elif isinstance(val, float):
         return [ast.Float(val=val, src=_primitive.Float.dump(val))]
     elif isinstance(val, dict) and val and top_level_map:
-        return _top_level_map_tokens(val, bare_keys)
+        return _top_level_map_tokens(val, settings)
     elif isinstance(val, dict):
-        return _map_tokens(val, indent, bare_keys)
+        return _map_tokens(val, settings)
     elif isinstance(val, (tuple, list)):
-        return _list_tokens(val, indent, bare_keys)
+        return _list_tokens(val, settings)
     else:
         raise AssertionError('Unexpected value {!r}'.format(val))
 
 
-def _inline(val, bare_keys, start, end, item_func, to_iter):
+def _inline(val, settings, start, end, item_func, to_iter):
     ret = [start]
     if val:
         items = to_iter(val)
-        ret.extend(item_func(items[0], bare_keys=bare_keys))
+        ret.extend(item_func(items[0], settings))
         for item in items[1:]:
             ret.extend((ast.Comma(','), ast.Space(' ')))
-            ret.extend(item_func(item))
+            ret.extend(item_func(item, settings))
     ret.append(end)
     return ret
 
 
-def _multiline(val, indent, bare_keys, start, end, item_func, to_iter):
+def _multiline(val, settings, start, end, item_func, to_iter):
     ret = [start, ast.NL('\n')]
     for item in to_iter(val):
-        ret.append(ast.Indent('    ' * (indent + 1)))
-        ret.extend(item_func(item, indent + 1, bare_keys))
+        ret.append(ast.Indent('    ' * (settings.indented.indent)))
+        ret.extend(item_func(item, settings.indented))
         ret.extend((ast.Comma(','), ast.NL('\n')))
-    if indent > 0:
-        ret.append(ast.Indent('    ' * indent))
+    if settings.indent > 0:
+        ret.append(ast.Indent('    ' * settings.indent))
     ret.append(end)
     return ret
 
 
-def _container(val, indent, bare_keys, **kwargs):
-    if indent >= 0 and val:
-        return _multiline(val, indent, bare_keys, **kwargs)
+def _container(val, settings, **kwargs):
+    if settings.indent >= 0 and val:
+        return _multiline(val, settings, **kwargs)
     else:
-        return _inline(val, bare_keys, **kwargs)
+        return _inline(val, settings, **kwargs)
 
 
-def _map_item_tokens(kv, indent=-1, bare_keys=True):
+def _map_item_tokens(kv, settings):
     k, v = kv
     ret = []
-    ret.extend(_to_tokens(k, indent, bare_keys, key=True))
+    ret.extend(_to_tokens(k, settings, key=True))
     ret.extend((ast.Colon(':'), ast.Space(' ')))
-    ret.extend(_to_tokens(v, indent, bare_keys))
+    ret.extend(_to_tokens(v, settings))
     return ret
 
 
@@ -116,10 +128,10 @@ _list_tokens = functools.partial(
 )
 
 
-def _top_level_map_tokens(dct, bare_keys):
+def _top_level_map_tokens(dct, settings):
     tokens = []
     for kv in dct.items():
-        tokens.extend(_map_item_tokens(kv, indent=0, bare_keys=bare_keys))
+        tokens.extend(_map_item_tokens(kv, settings._replace(indent=0)))
         tokens.append(ast.NL('\n'))
     return tokens
 
@@ -312,12 +324,11 @@ def loads(s):
 
 
 def dumps(v, indented=True, bare_keys=True, top_level_map=True):
-    return unparse(_to_ast(
-        v,
+    settings = Settings(
         indent=0 if indented else -1,
         bare_keys=bare_keys,
-        top_level_map=top_level_map,
-    ))
+    )
+    return unparse(_to_ast(v, settings, top_level_map=top_level_map))
 
 
 def load(stream):

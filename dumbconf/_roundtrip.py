@@ -131,7 +131,7 @@ _list_tokens = functools.partial(
 def _top_level_map_tokens(dct, settings):
     tokens = []
     for kv in dct.items():
-        tokens.extend(_map_item_tokens(kv, settings._replace(indent=0)))
+        tokens.extend(_map_item_tokens(kv, settings))
         tokens.append(ast.NL('\n'))
     return tokens
 

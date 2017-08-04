@@ -22,7 +22,9 @@ else:  # pragma: no cover (PY3)
     int_types = (int,)
 
 
-class Settings(collections.namedtuple('Settings', ('indent', 'bare_keys'))):
+class Settings(collections.namedtuple(
+        'Settings', ('indent', 'bare_keys', 'inline_small_containers'),
+)):
     __slots__ = ()
 
     @property
@@ -31,7 +33,7 @@ class Settings(collections.namedtuple('Settings', ('indent', 'bare_keys'))):
         return self._replace(indent=self.indent + 1)
 
 
-Settings.DEFAULT = Settings(-1, True)
+Settings.DEFAULT = Settings(-1, True, True)
 
 
 BARE_WORD_FULL_MATCH_RE = re.compile(BARE_WORD_RE.pattern + '$')
@@ -76,35 +78,41 @@ def _to_tokens(val, settings=Settings.DEFAULT, key=False, top_level_map=False):
         raise AssertionError('Unexpected value {!r}'.format(val))
 
 
-def _inline(val, settings, start, end, item_func, to_iter):
-    ret = [start]
+def _inline(val, settings, container_settings):
+    ret = [container_settings.start]
     if val:
-        items = to_iter(val)
-        ret.extend(item_func(items[0], settings))
+        items = container_settings.to_iter(val)
+        ret.extend(container_settings.item_func(items[0], settings))
         for item in items[1:]:
             ret.extend((ast.Comma(','), ast.Space(' ')))
-            ret.extend(item_func(item, settings))
-    ret.append(end)
+            ret.extend(container_settings.item_func(item, settings))
+    ret.append(container_settings.end)
     return ret
 
 
-def _multiline(val, settings, start, end, item_func, to_iter):
-    ret = [start, ast.NL('\n')]
-    for item in to_iter(val):
+def _multiline(val, settings, container_settings):
+    ret = [container_settings.start, ast.NL('\n')]
+    for item in container_settings.to_iter(val):
         ret.append(ast.Indent('    ' * (settings.indented.indent)))
-        ret.extend(item_func(item, settings.indented))
+        ret.extend(container_settings.item_func(item, settings.indented))
         ret.extend((ast.Comma(','), ast.NL('\n')))
     if settings.indent > 0:
         ret.append(ast.Indent('    ' * settings.indent))
-    ret.append(end)
+    ret.append(container_settings.end)
     return ret
 
 
-def _container(val, settings, **kwargs):
-    if settings.indent >= 0 and val:
-        return _multiline(val, settings, **kwargs)
+def _container(val, settings, container_settings):
+    if (
+            settings.indent < 0 or
+            not val or (
+                settings.inline_small_containers and
+                len(container_settings.to_iter(val)) < 2
+            )
+    ):
+        return _inline(val, settings, container_settings)
     else:
-        return _inline(val, settings, **kwargs)
+        return _multiline(val, settings, container_settings)
 
 
 def _map_item_tokens(kv, settings):
@@ -116,15 +124,24 @@ def _map_item_tokens(kv, settings):
     return ret
 
 
+ContainerSettings = collections.namedtuple(
+    'ContainerSettings', ('start', 'end', 'item_func', 'to_iter'),
+)
+
+
 _map_tokens = functools.partial(
     _container,
-    start=ast.MapStart('{'), end=ast.MapEnd('}'),
-    item_func=_map_item_tokens, to_iter=lambda m: tuple(m.items()),
+    container_settings=ContainerSettings(
+        start=ast.MapStart('{'), end=ast.MapEnd('}'),
+        item_func=_map_item_tokens, to_iter=lambda m: tuple(m.items()),
+    ),
 )
 _list_tokens = functools.partial(
     _container,
-    start=ast.ListStart('['), end=ast.ListEnd(']'),
-    item_func=_to_tokens, to_iter=tuple,
+    container_settings=ContainerSettings(
+        start=ast.ListStart('['), end=ast.ListEnd(']'),
+        item_func=_to_tokens, to_iter=tuple,
+    ),
 )
 
 
@@ -323,10 +340,17 @@ def loads(s):
     return loads_roundtrip(s).python_value()
 
 
-def dumps(v, indented=True, bare_keys=True, top_level_map=True):
+def dumps(
+        v,
+        indented=True,
+        bare_keys=True,
+        top_level_map=True,
+        inline_small_containers=True,
+):
     settings = Settings(
         indent=0 if indented else -1,
         bare_keys=bare_keys,
+        inline_small_containers=inline_small_containers,
     )
     return unparse(_to_ast(v, settings, top_level_map=top_level_map))
 

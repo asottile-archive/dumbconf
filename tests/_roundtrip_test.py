@@ -358,7 +358,7 @@ def test_dumps_map_indented():
 
 
 def test_dumps_map_top_level_map():
-    ret = dumps({1: {2: 3}, 4: {5: 6}})
+    ret = dumps({1: {2: 3}, 4: {5: 6}}, inline_small_containers=False)
     assert ret == (
         '1: {\n'
         '    2: 3,\n'
@@ -370,7 +370,10 @@ def test_dumps_map_top_level_map():
 
 
 def test_dumps_nested_map_indented():
-    ret = dumps({1: {2: 3}, 4: {5: 6}}, top_level_map=False)
+    ret = dumps(
+        {1: {2: 3}, 4: {5: 6}},
+        top_level_map=False, inline_small_containers=False,
+    )
     assert ret == (
         '{\n'
         '    1: {\n'
@@ -380,6 +383,26 @@ def test_dumps_nested_map_indented():
         '        5: 6,\n'
         '    },\n'
         '}'
+    )
+
+
+def test_inline_small_containers():
+    ret = dumps({1: {2: 3}, 4: [5]})
+    assert ret == (
+        '1: {2: 3}\n'
+        '4: [5]\n'
+    )
+
+
+def test_disable_inline_small_containers():
+    ret = dumps({1: {2: 3}, 4: [5]}, inline_small_containers=False)
+    assert ret == (
+        '1: {\n'
+        '    2: 3,\n'
+        '}\n'
+        '4: [\n'
+        '    5,\n'
+        ']\n'
     )
 
 

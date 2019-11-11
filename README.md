@@ -1,5 +1,5 @@
-[![Build Status](https://travis-ci.org/asottile/dumbconf.svg?branch=master)](https://travis-ci.org/asottile/dumbconf)
-[![Coverage Status](https://coveralls.io/repos/github/asottile/dumbconf/badge.svg?branch=master)](https://coveralls.io/github/asottile/dumbconf?branch=master)
+[![Build Status](https://dev.azure.com/asottile/asottile/_apis/build/status/asottile.dumbconf?branchName=master)](https://dev.azure.com/asottile/asottile/_build/latest?definitionId=43&branchName=master)
+[![Azure DevOps coverage](https://img.shields.io/azure-devops/coverage/asottile/asottile/43/master.svg)](https://dev.azure.com/asottile/asottile/_build/latest?definitionId=43&branchName=master)
 
 # dumbconf - A WIP spec
 

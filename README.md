@@ -1,3 +1,11 @@
+# DEPRECATED
+
+This never really got finished, but was a fun little project for me to learn
+about tokenizing / parsing.  I think a better solution now would be to
+implement a [json5](https://json5.org) parser instead.
+
+___
+
 [![Build Status](https://dev.azure.com/asottile/asottile/_apis/build/status/asottile.dumbconf?branchName=master)](https://dev.azure.com/asottile/asottile/_build/latest?definitionId=43&branchName=master)
 [![Azure DevOps coverage](https://img.shields.io/azure-devops/coverage/asottile/asottile/43/master.svg)](https://dev.azure.com/asottile/asottile/_build/latest?definitionId=43&branchName=master)
 
